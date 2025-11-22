@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:18
+    container_name: global_english_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-pg_global_english}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./sql/init:/docker-entrypoint-initdb.d/
+
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: global_english_api
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-pg_global_english}
+      API_PORT: 3000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: global_english_web
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
