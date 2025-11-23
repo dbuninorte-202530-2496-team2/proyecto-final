@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import express, { type Application } from "express";
 import cors from 'cors';
+import testRoutes from "./routes/test.routes";
 import dotenv from 'dotenv';
 import createError from 'http-errors';
 import type { Server } from "http";
+
 
 //import { connectDB, initDB } from "./config/db.js";
 import { errorHandler } from './middleware/error-handler.middleware.js';
@@ -15,11 +17,15 @@ const app = express();
 app.use(cors());
 
 
+
 app.use(express.json());
 app.use('/api', apiRouter);
 
+app.use("/api", testRoutes);
+
 app.use(function(req, res, next) { next(createError(404)); });
 app.use(errorHandler)
+
 
 
 // RELATIVO AL SERVIDOR
