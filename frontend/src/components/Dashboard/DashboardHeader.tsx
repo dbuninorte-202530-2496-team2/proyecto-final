@@ -1,4 +1,5 @@
 import { LogOut, User, Shield, UserCog } from 'lucide-react';
+import {useAuth} from '../../context/AuthContext';
 
 interface DashboardHeaderProps {
   usuario: string;
@@ -6,7 +7,8 @@ interface DashboardHeaderProps {
   onLogout: () => void;
 }
 
-export function DashboardHeader({ usuario, rol, onLogout }: DashboardHeaderProps) {
+export function DashboardHeader() {
+  const { usuario, rol, logout } = useAuth(); 
   const getRoleIcon = () => {
     switch (rol) {
       case 'ADMINISTRADOR':
@@ -52,7 +54,7 @@ export function DashboardHeader({ usuario, rol, onLogout }: DashboardHeaderProps
         </div>
         
         <button
-          onClick={onLogout}
+          onClick={logout}
           title="Cerrar sesión"
           className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
         >

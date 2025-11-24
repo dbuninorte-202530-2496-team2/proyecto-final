@@ -4,21 +4,17 @@ import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { ClasesTab } from './tabs/ClasesTab';
 import { ConfiguracionTab } from './tabs/ConfiguracionTab';
+import {useAuth} from '../../context/AuthContext';
 
-interface DashboardProps {
-  usuario: string;
-  rol: 'ADMINISTRADOR' | 'ADMINISTRATIVO' | 'TUTOR';
-  onLogout: () => void;
-}
-
-export default function Dashboard({ usuario, rol, onLogout }: DashboardProps) {
+export default function Dashboard() {
+  const { usuario, rol, logout } = useAuth(); 
   const tienePermisoAdministrativo = rol === 'ADMINISTRADOR' || rol === 'ADMINISTRATIVO';
   const esTutor = rol === 'TUTOR';
 
   return (
     <div className="min-h-screen bg-green-50 p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
-        <DashboardHeader usuario={usuario} rol={rol} onLogout={onLogout} />
+        <DashboardHeader />
 
         <Tabs defaultValue={esTutor ? "clases" : "instituciones"}>
           <TabsList className="flex flex-wrap h-auto gap-2">
@@ -66,7 +62,7 @@ export default function Dashboard({ usuario, rol, onLogout }: DashboardProps) {
           )}
 
           <TabsContent value="clases">
-            <ClasesTab esTutor={esTutor} rol={rol} usuario={usuario} />
+            <ClasesTab esTutor={esTutor} />
           </TabsContent>
 
           {tienePermisoAdministrativo && (

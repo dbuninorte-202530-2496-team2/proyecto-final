@@ -9,10 +9,6 @@ export function DashboardPage() {
   }
 
   return (
-    <Dashboard 
-      usuario={usuario} 
-      rol={rol} 
-      onLogout={logout} 
-    />
+    <Dashboard />
   );
 }

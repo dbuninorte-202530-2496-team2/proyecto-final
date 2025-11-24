@@ -2,11 +2,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 
 interface ClasesTabProps {
   esTutor: boolean;
-  rol: 'ADMINISTRADOR' | 'ADMINISTRATIVO' | 'TUTOR';
-  usuario: string;
 }
 
-export function ClasesTab({ esTutor, rol, usuario }: ClasesTabProps) {
+export function ClasesTab({ esTutor}: ClasesTabProps) {
   return (
     <Card>
       <CardHeader>
