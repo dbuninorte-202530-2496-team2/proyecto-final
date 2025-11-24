@@ -31,24 +31,24 @@ RESTART IDENTITY CASCADE;
 -- =====================================================
 
 -- Roles
-INSERT INTO rol (id, nombre, descripcion) VALUES
-(1, 'TUTOR', 'Docente de inglés'),
-(2, 'ADMINISTRATIVO', 'Gestión administrativa'),
-(3, 'ADMINISTRADOR', 'Administrador del sistema');
+INSERT INTO rol (nombre, descripcion) VALUES
+('TUTOR', 'Docente de inglés'),
+('ADMINISTRATIVO', 'Gestión administrativa'),
+('ADMINISTRADOR', 'Administrador del sistema');
 
 -- Tipos de documento
-INSERT INTO tipoDocumento (id, codigo, descripcion) VALUES
-(1, 'RC', 'Registro Civil'),
-(2, 'TI', 'Tarjeta de Identidad'),
-(3, 'CC', 'Cédula de ciudadanía'),
-(4, 'TE', 'Tarjeta de extranjería'),
-(5, 'CE', 'Cédula de extranjería'),
-(6, 'NIT', 'Número de identificación tributaria'),
-(7, 'PP', 'Pasaporte'),
-(8, 'PEP', 'Permiso especial de permanencia'),
-(9, 'DIE', 'Documento de identificación extranjero'),
-(10, 'NUIP', 'NUIP'),
-(11, 'FOREIGN_NIT', 'NIT de otro país');
+INSERT INTO tipoDocumento (codigo, descripcion) VALUES
+('RC', 'Registro Civil'),
+('TI', 'Tarjeta de Identidad'),
+('CC', 'Cédula de ciudadanía'),
+('TE', 'Tarjeta de extranjería'),
+('CE', 'Cédula de extranjería'),
+('NIT', 'Número de identificación tributaria'),
+('PP', 'Pasaporte'),
+('PEP', 'Permiso especial de permanencia'),
+('DIE', 'Documento de identificación extranjero'),
+('NUIP', 'NUIP'),
+('FOREIGN_NIT', 'NIT de otro país');
 
 -- Motivos de inasistencia
 INSERT INTO motivo (descripcion) VALUES

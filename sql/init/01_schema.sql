@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS rol(
-	id int PRIMARY KEY,
+	id serial PRIMARY KEY, --serial maneja sequences internas
 	nombre text NOT NULL,
 	descripcion text
 );
+CREATE UNIQUE INDEX uq_rol_nombre_clean
+ON rol (LOWER(TRIM(nombre)));
 
 CREATE TABLE IF NOT EXISTS usuario(
 	usuario text PRIMARY KEY,
@@ -10,7 +12,7 @@ CREATE TABLE IF NOT EXISTS usuario(
 );
 
 CREATE TABLE IF NOT EXISTS tipoDocumento(
-	id int PRIMARY KEY,
+	id serial PRIMARY KEY,
 	codigo varchar(11) NOT NULL,
 	descripcion text
 );

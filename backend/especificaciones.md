@@ -46,7 +46,6 @@ DELETE /roles/:id          [ADMINISTRADOR]
 **DTOs:**
 ```typescript
 CreateRolDto {
-  id: number;
   nombre: string;  // 'ADMINISTRADOR' | 'ADMINISTRATIVO' | 'TUTOR'
   descripcion?: string;
 }

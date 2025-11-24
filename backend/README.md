@@ -1,98 +1,136 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Backend - NestJS API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST desarrollada con NestJS, PostgreSQL y autenticación JWT.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Inicio Rápido
 
-## Description
+### Prerequisitos
+- Docker y Docker Compose
+- Node.js 25+
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Levantar el proyecto
 
-## Project setup
+Desde el **root del monorepo**:
+
+Duplicar .env.example, renombrarlo como .env y asignar valores
 
 ```bash
-$ npm install
+docker-compose up
 ```
 
-## Compile and run the project
+Esto iniciará:
+- PostgreSQL en puerto `5432`
+- Backend en puerto `3000`
+- Ejecutará automáticamente scripts SQL desde `sql/init/`
+
+### Configurar datos iniciales (Seed)
 
 ```bash
-# development
-$ npm run start
+# Dentro del contenedor o localmente
+npm run dev
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Luego hacer POST a:
+POST http://localhost:3000/seed
 ```
 
-## Run tests
+Esto creará los usuarios de prueba:
+- **administrador** / `admin123`
+- **tutor1** / `tutor123`
+- **tutor2** / `tutor123`
+
+---
+
+## Autenticación
+
+### 1. Obtener token
 
 ```bash
-# unit tests
-$ npm run test
+POST /auth/login
+Content-Type: application/json
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+{
+  "usuario": "administrador",
+  "contrasena": "admin123"
+}
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+**Respuesta:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "usuario": { ... }
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 2. Usar el token
 
-## Resources
+Agregar en headers de las peticiones protegidas:
 
-Check out a few resources that may come in handy when working with NestJS:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### 3. Decorador `@Auth()`
 
-## Support
+Este proyecto usa un decorador personalizado para proteger rutas:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```typescript
+import { Auth } from './auth/decorators';
+import { ValidRoles } from './auth/interfaces';
 
-## Stay in touch
+// Ruta protegida - cualquier usuario autenticado
+@Get()
+@Auth()
+getProfile() { ... }
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+// Ruta solo para ADMINISTRADOR
+@Post()
+@Auth(ValidRoles.ADMINISTRADOR)
+create() { ... }
 
-## License
+// Múltiples roles permitidos
+@Put(':id')
+@Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
+update() { ... }
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**¿Qué hace el decorador `@Auth()`?**
+- ✅ Valida el JWT token
+- ✅ Verifica que el usuario tenga alguno de los roles especificados
+- ✅ Documenta automáticamente en Swagger (Bearer Auth, respuestas 401/403)
+- ✅ Inyecta el usuario autenticado en el request
+
+**Roles disponibles:**
+- `ValidRoles.ADMINISTRADOR`
+- `ValidRoles.ADMINISTRATIVO`
+- `ValidRoles.TUTOR`
+
+---
+
+## Base de Datos
+
+### Inicialización automática
+
+Los scripts en `sql/init/` se ejecutan en orden al levantar Docker:
+
+```
+sql/
+└── init/
+    ├── 01_schema.sql
+    ├── 02_fn_utils.sql
+    ├── 03_sp_asignaciones.sql
+    ├──...
+```
+
+> **Nota:** Usamos `SERIAL` para auto-incremento en la mayoría de ids. PostgreSQL maneja los IDs automáticamente.
+
+---
+
+## Documentación API (Swagger)
+
+### Acceder a Swagger UI
+
+```
+http://localhost:3000/api
+```
+Documentar endpoints, dtos y 
