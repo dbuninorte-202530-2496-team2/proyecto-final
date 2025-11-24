@@ -29,9 +29,11 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-pg_global_english}
       API_PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-secreto}
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./sql:/app/sql  # ← Montar sql para que SeedService pueda leer seed.sql
 
   web:
     build:
