@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS aula_horario_sem(
 	id_aula int,
 	id_horario int,
 	id_semana int,
+	fecha_programada date NOT NULL,
 	PRIMARY KEY(id_aula, id_horario, id_semana),
 	FOREIGN KEY (id_aula) REFERENCES aula(id),
 	FOREIGN KEY (id_horario) REFERENCES horario(id),

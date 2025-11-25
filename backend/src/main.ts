@@ -23,12 +23,26 @@ async function bootstrap() {
 		})
 	);
 
-  //Swagger
+  	//Swagger
 	const config = new DocumentBuilder()
-		.setTitle('NestJS RESTFul API')
-		.setDescription('Form-Submission CRUD endpoints')
+		.setTitle('Global English API')
+		.setDescription('Documentación de API REST con autenticación JWT')
 		.setVersion('0.1')
-		.build();
+		.addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Ingresa tu token JWT (obtenerlo de /auth/login)',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addTag('Auth', 'Endpoints de autenticación y gestión de usuarios')
+    .addTag('Roles', 'CRUD de roles del sistema')
+    .addTag('Seed', 'Inicialización de datos de prueba')
+	.build();
 	const documentFactory = () => SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('api', app, documentFactory);
 
