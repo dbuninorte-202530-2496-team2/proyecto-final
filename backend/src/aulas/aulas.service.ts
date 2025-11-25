@@ -131,11 +131,13 @@ export class AulasService {
       await this.findOne(id);
 
       const result = await this.pool.query(
-        `SELECT e.id, e.nombre, e.apellido, e.fecha_nacimiento, e.grado_escolar
+        `SELECT e.id, e.codigo, e.nombre, e.apellidos, 
+                e.score_in, e.score_out
          FROM estudiante e
          INNER JOIN estudiante_aula ea ON e.id = ea.id_estudiante
-         WHERE ea.id_aula = $1
-         ORDER BY e.apellido, e.nombre ASC`,
+         WHERE ea.id_aula = $1 
+           AND ea.fecha_desasignado IS NULL
+         ORDER BY e.apellidos, e.nombre ASC`,
         [id],
       );
 
@@ -152,14 +154,14 @@ export class AulasService {
       await this.findOne(id);
 
       const result = await this.pool.query(
-        `SELECT t.id, u.nombre, u.apellido, 
-                ta.fecha_inicio, ta.fecha_fin,
-                ta.id as asignacion_id
+        `SELECT p.id as id_tutor, p.nombre, p.apellido, 
+                ta.consec,
+                ta.fecha_asignado, 
+                ta.fecha_desasignado
          FROM tutor_aula ta
-         INNER JOIN tutor t ON ta.id_tutor = t.id
-         INNER JOIN usuario u ON t.id_usuario = u.id
+         INNER JOIN personal p ON ta.id_tutor = p.id
          WHERE ta.id_aula = $1
-         ORDER BY ta.fecha_inicio DESC`,
+         ORDER BY ta.fecha_asignado DESC`,
         [id],
       );
 
