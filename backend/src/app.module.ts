@@ -4,6 +4,13 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { SeedModule } from './seed/seed.module';
 import { RolesModule } from './roles/roles.module';
+import { InstitucionesModule } from './instituciones/instituciones.module';
+import { SedesModule } from './sedes/sedes.module';
+import { AulasModule } from './aulas/aulas.module';
+import { PeriodosModule } from './periodos/periodos.module';
+import { AulaHorarioSemanaModule } from './aula-horario-semana/aula-horario-semana.module';
+import { TutorAulaModule } from './tutor-aula/tutor-aula.module';
+import { AsistenciaTutorModule } from './asistencia-tutor/asistencia-tutor.module';
 
 @Module({
   imports: [
@@ -17,7 +24,20 @@ import { RolesModule } from './roles/roles.module';
     AuthModule,
     
     RolesModule,
+    
+    InstitucionesModule,
 
+    SedesModule,
+
+    AulasModule,
+
+    PeriodosModule,
+
+    AulaHorarioSemanaModule,
+
+    TutorAulaModule,
+
+    AsistenciaTutorModule,
   ],
 })
 export class AppModule {}
