@@ -12,6 +12,10 @@ import { AulaHorarioSemanaModule } from './aula-horario-semana/aula-horario-sema
 import { TutorAulaModule } from './tutor-aula/tutor-aula.module';
 import { AsistenciaTutorModule } from './asistencia-tutor/asistencia-tutor.module';
 
+import { EstudiantesModule } from './estudiantes/estudiantes.module';
+import { EstudianteAulaModule } from './estudiante-aula/estudiante-aula.module';
+import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia-estudiantes.module';
+
 @Module({
   imports: [
 
@@ -36,6 +40,12 @@ import { AsistenciaTutorModule } from './asistencia-tutor/asistencia-tutor.modul
     AulaHorarioSemanaModule,
 
     TutorAulaModule,
+
+    EstudiantesModule,
+
+    EstudianteAulaModule,
+    
+    AsistenciaEstudiantesModule,
 
     AsistenciaTutorModule,
   ],
