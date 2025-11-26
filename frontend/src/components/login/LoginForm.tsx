@@ -122,7 +122,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </div>
         )}
       </div>
-
+      
       {/* Campo Contraseña */}
       <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
         <div className="flex items-center justify-between">
@@ -203,8 +203,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           "Iniciar Sesión"
         )}
       </button>
-      
-      {/* Sección de usuarios de prueba con mejor estilo */}
+
       <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg animate-fadeInUp" style={{ animationDelay: "0.4s" }}>
         <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
           <span>💡</span> Usuarios de prueba disponibles:

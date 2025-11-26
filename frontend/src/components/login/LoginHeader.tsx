@@ -3,7 +3,7 @@ import { Globe } from "lucide-react";
 export function LoginHeader() {
   return (
     <div className="text-center space-y-4 pb-6 border-b border-gray-200">
-      {/* Logo animado */}
+
       <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-lg animate-scaleIn hover:shadow-2xl transition-shadow">
         <Globe className="w-10 h-10 text-white animate-fadeInUp" />
       </div>
