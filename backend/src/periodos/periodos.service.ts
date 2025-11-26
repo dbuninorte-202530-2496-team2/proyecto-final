@@ -1,6 +1,6 @@
-import { 
-  Injectable, 
-  Inject, 
+import {
+  Injectable,
+  Inject,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
@@ -14,38 +14,35 @@ import { PeriodoEntity, SemanaEntity } from './entities';
 export class PeriodosService {
   constructor(
     @Inject(PG_CONNECTION) private readonly pool: Pool,
-  ) {}
+  ) { }
 
   async create(createPeriodoDto: CreatePeriodoDto): Promise<PeriodoEntity> {
-    const { anho } = createPeriodoDto;
+    const { anho, numero } = createPeriodoDto;
 
     try {
-      // Verificar si ya existe un periodo con ese año
-      const checkQuery = 'SELECT id FROM periodo WHERE anho = $1';
-      const checkResult = await this.pool.query(checkQuery, [anho]);
+      const query = `
+      INSERT INTO periodo (anho, numero)
+      VALUES ($1, $2)
+      RETURNING *
+    `;
 
-      if (checkResult.rows.length > 0) {
-        throw new BadRequestException(`Ya existe un periodo para el año ${anho}`);
-      }
-
-      // Crear el periodo
-      const insertQuery = `
-        INSERT INTO periodo (anho)
-        VALUES ($1)
-        RETURNING *
-      `;
-      const result = await this.pool.query(insertQuery, [anho]);
-      
+      const result = await this.pool.query(query, [anho, numero]);
       return result.rows[0];
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
+
+    } catch (error: any) {
+
+      if (error.code === '23505') {
+        throw new BadRequestException(
+          `Ya existe un periodo ${anho}-${numero}`
+        );
       }
+
       throw new InternalServerErrorException(
-        `Error al crear el periodo: ${error.message}`
+        `Error al crear el periodo: ${error.message}`,
       );
     }
   }
+
 
   async findAll(): Promise<PeriodoEntity[]> {
     try {
@@ -80,69 +77,69 @@ export class PeriodosService {
   }
 
   async update(id: number, updatePeriodoDto: UpdatePeriodoDto): Promise<PeriodoEntity> {
-    // Verificar que existe
-    await this.findOne(id);
-
-    const { anho } = updatePeriodoDto;
+    const { anho, numero } = updatePeriodoDto;
 
     try {
-      // Si se está actualizando el año, verificar que no exista otro periodo con ese año
-      if (anho !== undefined) {
-        const checkQuery = 'SELECT id FROM periodo WHERE anho = $1 AND id != $2';
-        const checkResult = await this.pool.query(checkQuery, [anho, id]);
+      const query = `
+      UPDATE periodo
+      SET 
+        anho   = COALESCE($1, anho),
+        numero = COALESCE($2, numero)
+      WHERE id = $3
+      RETURNING *
+    `;
 
-        if (checkResult.rows.length > 0) {
-          throw new BadRequestException(`Ya existe otro periodo para el año ${anho}`);
-        }
+      const result = await this.pool.query(query, [anho, numero, id]);
+
+      if (result.rowCount === 0) {
+        throw new NotFoundException(`No existe el periodo con id ${id}`);
       }
-
-      const updateQuery = `
-        UPDATE periodo 
-        SET anho = COALESCE($1, anho)
-        WHERE id = $2
-        RETURNING *
-      `;
-      const result = await this.pool.query(updateQuery, [anho, id]);
 
       return result.rows[0];
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
+
+    } catch (error: any) {
+      if (error.code === '23505') {
+        throw new BadRequestException(
+          `Ya existe un periodo ${anho}-${numero}`
+        );
       }
+
       throw new InternalServerErrorException(
         `Error al actualizar el periodo: ${error.message}`
       );
     }
   }
 
+
+
   async remove(id: number): Promise<{ message: string }> {
-    // Verificar que existe
-    await this.findOne(id);
-
     try {
-      // Verificar si tiene semanas asociadas
-      const checkQuery = 'SELECT COUNT(*) as count FROM semana WHERE id_periodo = $1';
-      const checkResult = await this.pool.query(checkQuery, [id]);
+      const result = await this.pool.query(
+        'DELETE FROM periodo WHERE id = $1 RETURNING *',
+        [id]
+      );
 
-      if (parseInt(checkResult.rows[0].count) > 0) {
+      if (result.rowCount === 0) {
+        throw new NotFoundException(`No existe el periodo con id ${id}`);
+      }
+
+      return { message: `Periodo con id ${id} eliminado correctamente` };
+
+    } catch (error: any) {
+
+      // Si la FK lo bloquea → 23503
+      if (error.code === '23503') {
         throw new BadRequestException(
           'No se puede eliminar el periodo porque tiene semanas asociadas'
         );
       }
 
-      const deleteQuery = 'DELETE FROM periodo WHERE id = $1';
-      await this.pool.query(deleteQuery, [id]);
-
-      return { message: `Periodo con id ${id} eliminado correctamente` };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
         `Error al eliminar el periodo: ${error.message}`
       );
     }
   }
+
 
   async findSemanasByPeriodo(id_periodo: number): Promise<SemanaEntity[]> {
     // Verificar que el periodo existe
@@ -169,66 +166,63 @@ export class PeriodosService {
   }
 
   async generarSemanas(
-    id_periodo: number, 
+    id_periodo: number,
     generarSemanasDto: GenerarSemanasDto
-  ): Promise<{ message: string; semanas_creadas: number }> {
+  ): Promise<{ message: string; semanas_creadas: number; info: any }> {
+    await this.findOne(id_periodo);
+    const { fec_ini, cantidad_semanas } = generarSemanasDto;
+
+    try {
+      // /sql/init/06.calendario.sql
+      await this.pool.query(
+        'CALL sp_crear_calendario_semanas($1, $2, $3)',
+        [id_periodo, fec_ini, cantidad_semanas]
+      );
+
+      // Obtener información del calendario
+      const infoQuery = 'SELECT * FROM fn_info_calendario_periodo($1)';
+      const infoResult = await this.pool.query(infoQuery, [id_periodo]);
+      const info = infoResult.rows[0];
+
+      return {
+        message: `Se generaron ${info.total_semanas} semanas exitosamente`,
+        semanas_creadas: info.total_semanas,
+        info: {
+          primera_semana: { inicio: info.primera_semana_inicio, fin: info.primera_semana_fin },
+          ultima_semana: { inicio: info.ultima_semana_inicio, fin: info.ultima_semana_fin },
+          duracion_total_dias: info.duracion_dias,
+        }
+      };
+    } catch (error) {
+      if (error.message.includes('Ya existen semanas')) {
+        throw new BadRequestException('El periodo ya tiene semanas generadas...');
+      }
+      throw new InternalServerErrorException(`Error: ${error.message}`);
+    }
+  }
+
+  async getInfoCalendario(id_periodo: number): Promise<any> {
     // Verificar que el periodo existe
     await this.findOne(id_periodo);
 
-    const { fec_ini, cantidad_semanas } = generarSemanasDto;
-
-    const client = await this.pool.connect();
-    
     try {
-      await client.query('BEGIN');
-
-      // Verificar si ya existen semanas para este periodo
-      const checkQuery = 'SELECT COUNT(*) as count FROM semana WHERE id_periodo = $1';
-      const checkResult = await client.query(checkQuery, [id_periodo]);
-
-      if (parseInt(checkResult.rows[0].count) > 0) {
-        throw new BadRequestException(
-          'El periodo ya tiene semanas generadas. Elimínelas primero si desea regenerar.'
+      const query = 'SELECT * FROM fn_info_calendario_periodo($1)';
+      const result = await this.pool.query(query, [id_periodo]);
+      
+      if (!result.rows[0] || result.rows[0].total_semanas === 0) {
+        throw new NotFoundException(
+          `El periodo ${id_periodo} no tiene semanas generadas aún`
         );
       }
 
-      // Generar las semanas
-      const insertQuery = `
-        INSERT INTO semana (fec_ini, id_periodo)
-        VALUES ($1, $2)
-        RETURNING *
-      `;
-
-      let semanasCreadas = 0;
-      const fechaInicio = new Date(fec_ini);
-
-      for (let i = 0; i < cantidad_semanas; i++) {
-        const fechaSemana = new Date(fechaInicio);
-        fechaSemana.setDate(fechaInicio.getDate() + (i * 7));
-        
-        const fechaFormateada = fechaSemana.toISOString().split('T')[0];
-        
-        await client.query(insertQuery, [fechaFormateada, id_periodo]);
-        semanasCreadas++;
-      }
-
-      await client.query('COMMIT');
-
-      return {
-        message: `Se generaron ${semanasCreadas} semanas exitosamente`,
-        semanas_creadas: semanasCreadas,
-      };
+      return result.rows[0];
     } catch (error) {
-      await client.query('ROLLBACK');
-      
-      if (error instanceof BadRequestException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Error al generar las semanas: ${error.message}`
+        `Error al obtener información del calendario: ${error.message}`
       );
-    } finally {
-      client.release();
     }
   }
 }

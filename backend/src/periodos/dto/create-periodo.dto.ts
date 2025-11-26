@@ -13,4 +13,15 @@ export class CreatePeriodoDto {
   @Min(2020, { message: 'El año debe ser mayor o igual a 2020' })
   @Max(2100, { message: 'El año debe ser menor o igual a 2100' })
   anho: number;
+
+  @ApiProperty({
+  description: 'Número del periodo académico dentro del año',
+  example: 1,
+  minimum: 1,
+})
+@IsInt({ message: 'El número de periodo debe ser un entero' })
+@IsPositive({ message: 'El número de periodo debe ser positivo' })
+@Min(1, { message: 'El número mínimo de periodo es 1' })
+numero: number;
+
 }

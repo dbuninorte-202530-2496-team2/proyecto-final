@@ -202,4 +202,38 @@ export class PeriodosController {
   ) {
     return this.periodosService.generarSemanas(id, generarSemanasDto);
   }
+
+
+  @Get(':id/calendario/info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Obtener información del calendario del periodo',
+    description: 'Retorna un resumen con fechas de inicio/fin y duración total del calendario.'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del periodo',
+    example: 1,
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Información del calendario obtenida exitosamente',
+    schema: {
+      example: {
+        total_semanas: 40,
+        primera_semana_inicio: '2024-01-08',
+        primera_semana_fin: '2024-01-14',
+        ultima_semana_inicio: '2024-10-07',
+        ultima_semana_fin: '2024-10-13',
+        duracion_dias: 280
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Periodo no encontrado o no tiene semanas generadas',
+  })
+  getInfoCalendario(@Param('id', ParseIntPipe) id: number) {
+    return this.periodosService.getInfoCalendario(id);
+  }
 }
