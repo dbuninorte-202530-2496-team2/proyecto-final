@@ -6,6 +6,9 @@ import { SeedModule } from './seed/seed.module';
 import { RolesModule } from './roles/roles.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { PersonalModule } from './personal/personal.module';
+import { HorarioModule } from './horario/horario.module';
+import { MotivoModule } from './motivo/motivo.module';
+import { FestivoModule } from './festivo/festivo.module';
 
 @Module({
   imports: [
@@ -23,6 +26,12 @@ import { PersonalModule } from './personal/personal.module';
     UsuariosModule,
 
     PersonalModule,
+
+    HorarioModule,
+
+    MotivoModule,
+
+    FestivoModule,
 
   ],
 })
