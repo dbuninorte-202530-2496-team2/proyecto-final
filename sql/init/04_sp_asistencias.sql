@@ -2,7 +2,7 @@
 -- STORED PROCEDURES: GESTIÓN DE ASISTENCIAS
 -- =====================================================
 
--- Procedure: Registrar asistencia de estudiante
+-- Procedure: Registrar asistencia de estudiante (VALIDADA CONTRA ASISTENCIA TUTOR)
 CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_estudiante(
     p_id_estudiante INT,
     p_id_aula INT,
@@ -13,40 +13,52 @@ CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_estudiante(
 LANGUAGE plpgsql AS $$
 DECLARE
     v_id_semana INT;
+    v_asistencia_tutor RECORD;
     v_aula_estudiante INT;
 BEGIN
+    -- Validar estudiante en aula
     v_aula_estudiante := fn_obtener_aula_actual_estudiante(p_id_estudiante);
-    
-    IF v_aula_estudiante IS NULL THEN
-        RAISE EXCEPTION 'El estudiante % no existe o no tiene aula asignada', p_id_estudiante;
-    END IF;
-    
-    IF v_aula_estudiante != p_id_aula THEN
+    IF v_aula_estudiante IS NULL OR v_aula_estudiante != p_id_aula THEN
         RAISE EXCEPTION 'El estudiante % no pertenece al aula %', p_id_estudiante, p_id_aula;
     END IF;
-    
+
     v_id_semana := fn_obtener_semana_por_fecha(p_fecha_real);
-    
-    IF v_id_semana IS NOT NULL AND 
-       NOT fn_horario_pertenece_aula_semana(p_id_aula, p_id_horario, v_id_semana) THEN
-        RAISE EXCEPTION 'El horario % no está asignado al aula % en la semana %', 
-            p_id_horario, p_id_aula, v_id_semana;
+    IF v_id_semana IS NULL THEN
+        RAISE EXCEPTION 'Fecha % no pertenece a ninguna semana válida', p_fecha_real;
     END IF;
-    
+
+    -- Obtener registro del tutor
+    SELECT *
+    INTO v_asistencia_tutor
+    FROM asistenciaTut
+    WHERE id_aula = p_id_aula
+      AND id_horario = p_id_horario
+      AND fecha_real = p_fecha_real
+    LIMIT 1;
+
+    -- Debe existir asistenciaTutor
+    IF v_asistencia_tutor IS NULL THEN
+        RAISE EXCEPTION 'No existe asistencia del tutor para aula %, horario %, fecha %',
+            p_id_aula, p_id_horario, p_fecha_real;
+    END IF;
+
+    -- Validar que la clase haya sido dictada
+    IF NOT v_asistencia_tutor.dictoClase THEN
+        RAISE EXCEPTION 'No se puede registrar asistencia de estudiante porque el tutor NO dictó la clase.';
+    END IF;
+
+    -- Registrar asistencia estudiante
     INSERT INTO asistenciaEst (
         fecha_real, presente, id_estudiante, id_aula, id_horario, id_semana
     ) VALUES (
         p_fecha_real, p_presente, p_id_estudiante, p_id_aula, p_id_horario, v_id_semana
     )
     ON CONFLICT (id_estudiante, id_aula, id_horario, fecha_real)
-    DO UPDATE SET presente = p_presente;
-    
-    RAISE NOTICE 'Asistencia registrada para estudiante % en fecha %: %', 
-        p_id_estudiante, p_fecha_real, CASE WHEN p_presente THEN 'PRESENTE' ELSE 'AUSENTE' END;
+    DO UPDATE SET presente = EXCLUDED.presente;
 END;
 $$;
 
--- Procedure: Registrar asistencia de tutor
+-- Procedure: Registrar asistencia de tutor (mejorada)
 CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_tutor(
     p_id_tutor INT,
     p_id_aula INT,
@@ -61,49 +73,55 @@ DECLARE
     v_tutor_actual INT;
     v_es_festivo BOOLEAN;
 BEGIN
+    -- Verificar tutor asignado
     v_tutor_actual := fn_obtener_tutor_actual_aula(p_id_aula);
-    
     IF v_tutor_actual IS NULL THEN
-        RAISE EXCEPTION 'El aula % no tiene un tutor asignado', p_id_aula;
+        RAISE EXCEPTION 'El aula % no tiene tutor asignado', p_id_aula;
     END IF;
-    
+
+    -- Validar que el tutor sea el actual
     IF v_tutor_actual != p_id_tutor THEN
-        RAISE WARNING 'El tutor % no es el tutor actual del aula % (tutor actual: %)', 
-            p_id_tutor, p_id_aula, v_tutor_actual;
+        RAISE WARNING 'El tutor % no es el tutor actual del aula %. Se registrará igual por ser administrativo.',
+            p_id_tutor, p_id_aula;
     END IF;
-    
+
+    -- Obtener semana
     v_id_semana := fn_obtener_semana_por_fecha(p_fecha_real);
-    
-    IF v_id_semana IS NOT NULL AND 
-       NOT fn_horario_pertenece_aula_semana(p_id_aula, p_id_horario, v_id_semana) THEN
-        RAISE EXCEPTION 'El horario % no está asignado al aula % en la semana %', 
+    IF v_id_semana IS NULL THEN
+        RAISE EXCEPTION 'La fecha % no pertenece a ninguna semana válida', p_fecha_real;
+    END IF;
+
+    -- Validar horario está asignado al aula esa semana
+    IF NOT fn_horario_pertenece_aula_semana(p_id_aula, p_id_horario, v_id_semana) THEN
+        RAISE EXCEPTION 'El horario % no está asignado al aula % en la semana %',
             p_id_horario, p_id_aula, v_id_semana;
     END IF;
-    
+
+    -- Validar festivo
     v_es_festivo := fn_es_festivo(p_fecha_real);
-    
+
     IF v_es_festivo AND p_dicto_clase THEN
-        RAISE WARNING 'La fecha % es festivo. ¿Está seguro de marcar que dictó clase?', p_fecha_real;
+        RAISE WARNING 'La fecha % es festivo. Se registra clase dictada bajo advertencia.', p_fecha_real;
     END IF;
-    
+
     IF NOT p_dicto_clase AND p_id_motivo IS NULL AND NOT v_es_festivo THEN
-        RAISE EXCEPTION 'Debe proporcionar un motivo para no dictar la clase';
+        RAISE EXCEPTION 'Debe proporcionar un motivo si no dictó la clase y no es festivo.';
     END IF;
-    
+
+    -- Registrar o actualizar asistencia
     INSERT INTO asistenciaTut (
         fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion
     ) VALUES (
         p_fecha_real, p_dicto_clase, p_id_tutor, p_id_aula, p_id_horario, v_id_semana, p_id_motivo, NULL
     )
     ON CONFLICT (id_tutor, id_aula, id_horario, fecha_real)
-    DO UPDATE SET 
-        dictoClase = p_dicto_clase,
-        id_motivo = p_id_motivo;
-    
-    RAISE NOTICE 'Asistencia registrada para tutor % en fecha %: %', 
-        p_id_tutor, p_fecha_real, CASE WHEN p_dicto_clase THEN 'DICTÓ CLASE' ELSE 'NO DICTÓ CLASE' END;
+    DO UPDATE SET
+        dictoClase = EXCLUDED.dictoClase,
+        id_motivo = EXCLUDED.id_motivo;
+
 END;
 $$;
+
 
 -- Procedure: Registrar fecha de reposición de clase
 CREATE OR REPLACE PROCEDURE sp_registrar_reposicion_clase(
@@ -135,7 +153,7 @@ BEGIN
 END;
 $$;
 
--- Procedure: Registrar asistencias masivas de estudiantes de un aula
+-- Procedure: Registrar asistencias masivas de estudiantes de un aula (validada)
 CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_aula_masiva(
     p_id_aula INT,
     p_id_horario INT,
@@ -144,27 +162,45 @@ CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_aula_masiva(
 )
 LANGUAGE plpgsql AS $$
 DECLARE
-    v_estudiante RECORD;
+    v_tutor_asistencia RECORD;
+    v_est RECORD;
     v_presente BOOLEAN;
 BEGIN
-    FOR v_estudiante IN 
-        SELECT ea.id_estudiante 
-        FROM estudiante_aula ea
-        WHERE ea.id_aula = p_id_aula 
-          AND ea.fecha_desasignado IS NULL
+    -- Validar que exista asistencia del tutor
+    SELECT *
+    INTO v_tutor_asistencia
+    FROM asistenciaTut
+    WHERE id_aula = p_id_aula
+      AND id_horario = p_id_horario
+      AND fecha_real = p_fecha_real
+    LIMIT 1;
+
+    IF v_tutor_asistencia IS NULL THEN
+        RAISE EXCEPTION 'Primero debe registrar la asistencia del tutor para el aula %, horario %, fecha %',
+            p_id_aula, p_id_horario, p_fecha_real;
+    END IF;
+
+    IF NOT v_tutor_asistencia.dictoClase THEN
+        RAISE EXCEPTION 'No se puede registrar asistencia masiva: el tutor NO dictó la clase.';
+    END IF;
+
+    -- Recorrer estudiantes del aula
+    FOR v_est IN
+        SELECT id_estudiante
+        FROM estudiante_aula
+        WHERE id_aula = p_id_aula
+          AND fecha_desasignado IS NULL
     LOOP
-        v_presente := v_estudiante.id_estudiante = ANY(p_estudiantes_presentes);
-        
+        v_presente := (v_est.id_estudiante = ANY(p_estudiantes_presentes));
+
         CALL sp_registrar_asistencia_estudiante(
-            v_estudiante.id_estudiante,
+            v_est.id_estudiante,
             p_id_aula,
             p_id_horario,
             p_fecha_real,
             v_presente
         );
     END LOOP;
-    
-    RAISE NOTICE 'Asistencia masiva registrada para aula % en fecha %', p_id_aula, p_fecha_real;
 END;
 $$;
 
@@ -196,7 +232,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- Procedure: Marcar todos como presentes (útil cuando casi todos asistieron)
+-- Procedure: Marcar todos como presentes (útil cuando casi todos asistieron)(VALIDADA)
 CREATE OR REPLACE PROCEDURE sp_marcar_todos_presentes(
     p_id_aula INT,
     p_id_horario INT,
@@ -205,27 +241,44 @@ CREATE OR REPLACE PROCEDURE sp_marcar_todos_presentes(
 )
 LANGUAGE plpgsql AS $$
 DECLARE
-    v_estudiante RECORD;
+    v_tutor_asistencia RECORD;
+    v_est RECORD;
     v_presente BOOLEAN;
 BEGIN
-    FOR v_estudiante IN 
-        SELECT ea.id_estudiante 
-        FROM estudiante_aula ea
-        WHERE ea.id_aula = p_id_aula 
-          AND ea.fecha_desasignado IS NULL
+    -- Validar existencia asistencia tutor
+    SELECT *
+    INTO v_tutor_asistencia
+    FROM asistenciaTut
+    WHERE id_aula = p_id_aula
+      AND id_horario = p_id_horario
+      AND fecha_real = p_fecha_real
+    LIMIT 1;
+
+    IF v_tutor_asistencia IS NULL THEN
+        RAISE EXCEPTION 'Primero debe registrar asistencia del tutor.';
+    END IF;
+
+    IF NOT v_tutor_asistencia.dictoClase THEN
+        RAISE EXCEPTION 'No se puede registrar asistencia: el tutor no dictó clase.';
+    END IF;
+
+    -- Loop estudiantes
+    FOR v_est IN
+        SELECT id_estudiante
+        FROM estudiante_aula
+        WHERE id_aula = p_id_aula
+          AND fecha_desasignado IS NULL
     LOOP
-        v_presente := NOT (v_estudiante.id_estudiante = ANY(p_estudiantes_ausentes));
-        
+        v_presente := NOT (v_est.id_estudiante = ANY(p_estudiantes_ausentes));
+
         CALL sp_registrar_asistencia_estudiante(
-            v_estudiante.id_estudiante,
+            v_est.id_estudiante,
             p_id_aula,
             p_id_horario,
             p_fecha_real,
             v_presente
         );
     END LOOP;
-    
-    RAISE NOTICE 'Asistencia registrada (todos presentes excepto %) para aula % en fecha %', 
-        array_length(p_estudiantes_ausentes, 1), p_id_aula, p_fecha_real;
+
 END;
 $$;
