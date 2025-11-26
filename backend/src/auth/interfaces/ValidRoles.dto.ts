@@ -1,0 +1,5 @@
+export enum ValidRoles {
+    TUTOR = 'TUTOR',
+    ADMINISTRATIVO = 'ADMINISTRATIVO',
+    ADMINISTRADOR = 'ADMINISTRADOR',
+}
