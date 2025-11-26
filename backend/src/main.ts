@@ -25,7 +25,7 @@ async function bootstrap() {
 
   //Swagger
 	const config = new DocumentBuilder()
-		.setTitle('NestJS RESTFul API')
+		.setTitle('Global English API')
 		.setDescription('Form-Submission CRUD endpoints')
 		.setVersion('0.1')
 		.build();

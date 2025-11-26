@@ -5,6 +5,10 @@ import { ConfigModule } from '@nestjs/config';
 import { SeedModule } from './seed/seed.module';
 import { RolesModule } from './roles/roles.module';
 
+import { EstudiantesModule } from './estudiantes/estudiantes.module';
+import { EstudianteAulaModule } from './estudiante-aula/estudiante-aula.module';
+import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia-estudiantes.module';
+
 @Module({
   imports: [
 
@@ -17,6 +21,12 @@ import { RolesModule } from './roles/roles.module';
     AuthModule,
     
     RolesModule,
+
+    EstudiantesModule,
+
+    EstudianteAulaModule,
+    
+    AsistenciaEstudiantesModule,
 
   ],
 })
