@@ -4,10 +4,13 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  ConflictException,
 } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_CONNECTION } from '../database/database.module';
 import { CreateRolDto, UpdateRolDto } from './dto';
+import { RolEntity } from './entities/rol.entity';
+import { ValidRoles } from 'src/auth/interfaces';
 
 @Injectable()
 export class RolesService {
@@ -42,7 +45,7 @@ export class RolesService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<RolEntity> {
     try {
       const result = await this.pool.query(
         `SELECT id, nombre, descripcion FROM rol WHERE id = $1`,
@@ -86,7 +89,11 @@ export class RolesService {
   async remove(id: number) {
     try {
       // Verificar que el rol existe
-      await this.findOne(id);
+      const rol = await this.findOne(id);
+
+      if (rol.nombre.toUpperCase() === ValidRoles.ADMINISTRADOR){
+        throw new ConflictException('No se pudo eliminar el rol: crítico para el sistema')
+      }
 
       await this.pool.query(`DELETE FROM rol WHERE id = $1`, [id]);
 
