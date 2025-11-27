@@ -4,75 +4,79 @@ import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { ClasesTab } from './tabs/ClasesTab';
 import { ConfiguracionTab } from './tabs/ConfiguracionTab';
-import {useAuth} from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { usuario, rol, logout } = useAuth(); 
+  const { rol } = useAuth();
   const tienePermisoAdministrativo = rol === 'ADMINISTRADOR' || rol === 'ADMINISTRATIVO';
   const esTutor = rol === 'TUTOR';
 
+  const tabs = [
+    ...(tienePermisoAdministrativo ? [
+      { value: 'instituciones', label: 'Instituciones', icon: Building2 },
+      { value: 'sedes', label: 'Sedes', icon: MapPin },
+      { value: 'aulas', label: 'Aulas', icon: Zap },
+      { value: 'personal', label: 'Personal', icon: Users },
+      { value: 'estudiantes', label: 'Estudiantes', icon: BookOpen },
+      { value: 'horarios', label: 'Horarios', icon: Clock },
+      { value: 'asignaciones', label: 'Asignaciones', icon: FileText },
+    ] : []),
+    { value: 'clases', label: esTutor ? 'Mis Clases' : 'Registro de Clases', icon: BookOpen },
+    { value: 'notas', label: 'Notas', icon: FileText },
+    ...(tienePermisoAdministrativo ? [
+      { value: 'configuracion', label: 'Configuración', icon: Settings },
+    ] : []),
+    { value: 'reportes', label: 'Reportes', icon: BarChart3 },
+  ];
+
   return (
-    <div className="min-h-screen bg-green-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-50 p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
+        {/* Header */}
         <DashboardHeader />
 
-        <Tabs defaultValue={esTutor ? "clases" : "instituciones"}>
-          <TabsList className="flex flex-wrap h-auto gap-2">
-            {/* Tabs para Administrador y Administrativo */}
-            {tienePermisoAdministrativo && (
-              <>
-                <TabsTrigger value="instituciones">Instituciones</TabsTrigger>
-                <TabsTrigger value="sedes">Sedes</TabsTrigger>
-                <TabsTrigger value="aulas">Aulas</TabsTrigger>
-                <TabsTrigger value="personal">Personal</TabsTrigger>
-                <TabsTrigger value="estudiantes">Estudiantes</TabsTrigger>
-                <TabsTrigger value="horarios">Horarios</TabsTrigger>
-                <TabsTrigger value="asignaciones">Asignaciones</TabsTrigger>
-              </>
-            )}
-            
-            {/* Tabs para todos los roles */}
-            <TabsTrigger value="clases">
-              {esTutor ? 'Mis Clases' : 'Registro de Clases'}
-            </TabsTrigger>
-            <TabsTrigger value="notas">Notas</TabsTrigger>
-            
-            {/* Tabs solo para Administrador y Administrativo */}
-            {tienePermisoAdministrativo && (
-              <TabsTrigger value="configuracion">Configuración</TabsTrigger>
-            )}
-            
-            {/* Reportes para todos */}
-            <TabsTrigger value="reportes">Reportes</TabsTrigger>
-          </TabsList>
+        {/* Tabs mejorados */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-2">
+          <Tabs defaultValue={esTutor ? "clases" : "instituciones"}>
+            <TabsList className="flex flex-wrap h-auto gap-2 bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-xl border border-gray-200">
+              {tabs.map(({ value, label, icon: Icon }) => (
+                <TabsTrigger 
+                  key={value} 
+                  value={value}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-white data-[state=active]:bg-white data-[state=active]:text-green-700 data-[state=active]:shadow-sm"
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          {/* Contenido de los tabs */}
-          {tienePermisoAdministrativo && (
-            <>
-              <TabsContent value="instituciones">
-                <InstitucionesTab />
+            {/* Contenido de tabs */}
+            <div className="mt-6">
+              {tienePermisoAdministrativo && (
+                <>
+                  <TabsContent value="instituciones">
+                    <InstitucionesTab />
+                  </TabsContent>
+                  <TabsContent value="sedes">
+                    <SedesTab />
+                  </TabsContent>
+                </>
+              )}
+
+              <TabsContent value="clases">
+                <ClasesTab esTutor={esTutor} />
               </TabsContent>
 
-              <TabsContent value="sedes">
-                <SedesTab />
-              </TabsContent>
-
-              {/* Agrega los demás tabs aquí... */}
-            </>
-          )}
-
-          <TabsContent value="clases">
-            <ClasesTab esTutor={esTutor} />
-          </TabsContent>
-
-          {tienePermisoAdministrativo && (
-            <TabsContent value="configuracion">
-              <ConfiguracionTab />
-            </TabsContent>
-          )}
-
-          {/* Más tabs... */}
-        </Tabs>
+              {tienePermisoAdministrativo && (
+                <TabsContent value="configuracion">
+                  <ConfiguracionTab />
+                </TabsContent>
+              )}
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
