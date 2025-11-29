@@ -1,7 +1,12 @@
 import { useState } from "react";
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import type { UserRole } from "../../types/auth.types";
+=======
+import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
+import type { User, UserRole } from "../../types/auth.types";
+>>>>>>> Stashed changes
 =======
 import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
 import type { User, UserRole } from "../../types/auth.types";
@@ -39,12 +44,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     if (user && user.password === password) {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       onLogin(usuario, user.rol);
     } else {
       setError("Usuario o contraseña incorrectos");
     }
 
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
       const usuarioLogeado = {
@@ -61,6 +69,9 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         setPassword("");
       }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
 import { DashboardHeader } from './DashboardHeader';
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { AsignacionesTab } from './tabs/AsignacionesTab';
 import { ClasesTab } from './tabs/ClasesTab';
 import { NotasTab } from './tabs/NotasTab';
@@ -11,6 +12,8 @@ import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { ConfiguracionTab } from './tabs/ConfiguracionTab';
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 import NotasTab from './tabs/NotasTab';
@@ -27,6 +30,9 @@ import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, Bar
 import AsignacionesTab from './tabs/AsignacionesTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -149,6 +155,7 @@ export default function Dashboard() {
                 <SedesTab />
               </TabsContent>
 
+<<<<<<< Updated upstream
               <TabsContent value="clases">
                 <ClasesTab />
               </TabsContent>
@@ -157,11 +164,16 @@ export default function Dashboard() {
                 <NotasTab />
               </TabsContent>
 =======
+=======
+>>>>>>> Stashed changes
               {esTutor &&
                 <TabsContent value="mi-horario">
                   <HorariosTutorTab />
                 </TabsContent>
               }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
               <TabsContent value="configuracion">

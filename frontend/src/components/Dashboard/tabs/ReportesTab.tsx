@@ -11,6 +11,7 @@ export function ReportesTab() {
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   // Simulación de asistencias reales de la API
   const asistencias = [
     { fecha: '2024-01-10', estado: 'Asistió' },
@@ -20,6 +21,9 @@ export function ReportesTab() {
     { fecha: '2024-02-20', estado: 'No asistió', motivo: 'Permiso personal' },
     { fecha: '2024-03-02', estado: 'Asistió' }
   ];
+=======
+import { Search, School, BarChart2, Users, TrendingUp, Calendar } from 'lucide-react';
+>>>>>>> Stashed changes
 =======
 import { Search, School, BarChart2, Users, TrendingUp, Calendar } from 'lucide-react';
 >>>>>>> Stashed changes
