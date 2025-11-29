@@ -1,14 +1,17 @@
 export type UserRole = 'ADMINISTRADOR' | 'ADMINISTRATIVO' | 'TUTOR';
 
 export interface User {
-  usuario: string;
+  id: number;
+  nombres: string;
+  apellidos: string;
+  correo: string;
   rol: UserRole;
 }
 
 export interface AuthContextType {
   isAuthenticated: boolean;
-  usuario: string | null;
+  usuario: User | null;
   rol: UserRole | null;
-  login: (usuario: string, rol: UserRole) => void;
+  login: (usuario: User) => void;
   logout: () => void;
 }

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState,  useEffect } from 'react';
 import type {ReactNode} from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { UserRole, AuthContextType } from '../types/auth.types';
+import type { UserRole, AuthContextType, User } from '../types/auth.types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -11,34 +11,34 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [usuario, setUsuario] = useState<string | null>(null);
+  const [usuario, setUsuario] = useState<User | null>(null);
   const [rol, setRol] = useState<UserRole | null>(null);
+
   const navigate = useNavigate();
 
   // Cargar datos de sesión desde localStorage al iniciar
   useEffect(() => {
     const storedUser = localStorage.getItem('usuario');
     const storedRole = localStorage.getItem('rol');
-    
+
     if (storedUser && storedRole) {
-      setUsuario(storedUser);
+      setUsuario(JSON.parse(storedUser));
       setRol(storedRole as UserRole);
       setIsAuthenticated(true);
     }
   }, []);
 
-  const login = (user: string, userRole: UserRole) => {
+  const login = (user: User) => {
     setUsuario(user);
-    setRol(userRole);
+    setRol(user.rol);
     setIsAuthenticated(true);
-    
-    // Guardar en localStorage para persistencia
-    localStorage.setItem('usuario', user);
-    localStorage.setItem('rol', userRole);
-    
-    // Navegar al dashboard
+
+    localStorage.setItem('usuario', JSON.stringify(user));
+    localStorage.setItem('rol', user.rol);
+
     navigate('/dashboard');
   };
+
 
   const logout = () => {
     setUsuario(null);

@@ -1,8 +1,13 @@
 import { useState } from "react";
+<<<<<<< Updated upstream
 import type { UserRole } from "../../types/auth.types";
+=======
+import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
+import type { User, UserRole } from "../../types/auth.types";
+>>>>>>> Stashed changes
 
 interface LoginFormProps {
-  onLogin: (usuario: string, rol: UserRole) => void;
+  onLogin: (usuario: User) => void;
 }
 
 // Usuarios de prueba
@@ -27,12 +32,29 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     const user = DEMO_USERS[usuario as keyof typeof DEMO_USERS];
 
     if (user && user.password === password) {
+<<<<<<< Updated upstream
       onLogin(usuario, user.rol);
     } else {
       setError("Usuario o contraseña incorrectos");
     }
 
+=======
+      const usuarioLogeado = {
+        id: 1, // ⚠ Puedes cambiarlo si deseas IDs distintos
+        nombres: usuario, 
+        apellidos: "",
+        correo: usuario,
+        rol: user.rol
+      } 
+      onLogin(usuarioLogeado);
+    }else {
+        setError("Usuario o contraseña incorrectos. Intenta de nuevo.");
+        // Clear password on error
+        setPassword("");
+      }
+>>>>>>> Stashed changes
     setLoading(false);
+    return;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
