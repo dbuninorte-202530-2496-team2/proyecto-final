@@ -10,7 +10,7 @@ import AsignacionesTab from './tabs/AsignacionesTab';
 import RegistroClasesTab from './tabs/RegistroClasesTab';
 import NotasTab from './tabs/NotasTab';
 import ReportesTab from './tabs/ReportesTab';
-import { ConfiguracionTab } from './tabs/ConfiguracionTab';
+import ConfiguracionTab from './tabs/ConfiguracionTab';
 import { useAuth } from '../../context/AuthContext';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
 
