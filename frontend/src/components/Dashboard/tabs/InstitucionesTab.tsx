@@ -60,7 +60,6 @@ export function InstitucionesTab() {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta institución?')) {
       try {
-        // Llamar a la API
         setInstituciones(instituciones.filter(inst => inst.id !== id));
         alert('Institución eliminada exitosamente');
       } catch (error) {
@@ -115,13 +114,17 @@ export function InstitucionesTab() {
       
       <CardContent>
         {loading ? (
-          <div className="text-center py-12 text-gray-500">
-            <p>Cargando instituciones...</p>
+          <div className="text-center py-12">
+            <div className="inline-flex items-center gap-2 text-gray-600">
+              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+              Cargando instituciones...
+            </div>
           </div>
         ) : (
           <>
+            {/* Filtros */}
             <div className="mb-6">
-              <div className="relative w-full max-w-md">
+              <div className="relative">
                 <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                 <input
                   type="text"

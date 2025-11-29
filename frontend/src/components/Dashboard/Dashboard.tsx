@@ -2,7 +2,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
 import { DashboardHeader } from './DashboardHeader';
 import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
-import { ClasesTab } from './tabs/ClasesTab';
+import { AulasTab } from './tabs/AulasTab';
+import { PersonalTab } from './tabs/PersonalTab';
+import EstudiantesTab from './tabs/EstudiantesTab';
+import HorariosTab from './tabs/HorariosTab';
+import AsignacionesTab from './tabs/AsignacionesTab';
+import RegistroClasesTab from './tabs/RegistroClasesTab';
+import NotasTab from './tabs/NotasTab';
+import ReportesTab from './tabs/ReportesTab';
 import { ConfiguracionTab } from './tabs/ConfiguracionTab';
 import { useAuth } from '../../context/AuthContext';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
@@ -62,11 +69,34 @@ export default function Dashboard() {
                   <TabsContent value="sedes">
                     <SedesTab />
                   </TabsContent>
+                  <TabsContent value="aulas">
+                    <AulasTab />
+                  </TabsContent>
+                  <TabsContent value="personal">
+                    <PersonalTab />
+                  </TabsContent>
+                  <TabsContent value="estudiantes">
+                    <EstudiantesTab />
+                  </TabsContent>
+                  <TabsContent value="horarios">
+                    <HorariosTab />
+                  </TabsContent>
+                  <TabsContent value="asignaciones">
+                    <AsignacionesTab />
+                  </TabsContent>
                 </>
               )}
 
               <TabsContent value="clases">
-                <ClasesTab esTutor={esTutor} />
+                <RegistroClasesTab />
+              </TabsContent>
+
+              <TabsContent value="notas">
+                <NotasTab />
+              </TabsContent>
+
+              <TabsContent value="reportes">
+                <ReportesTab />
               </TabsContent>
 
               {tienePermisoAdministrativo && (
