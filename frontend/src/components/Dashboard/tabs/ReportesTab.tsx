@@ -271,6 +271,35 @@ const calcularPromedioNotasPorPrograma = (
   return suma / filtradas.length;
 };
 
+// filtra por rango de fechas (si se envían)
+const filtrarAsistenciasPorRango = (
+  asistencias: AsistenciaEstudiante[],
+  fechaDesde: string,
+  fechaHasta: string,
+): AsistenciaEstudiante[] => {
+  if (!fechaDesde && !fechaHasta) return asistencias;
+
+  let desdeTime: number | null = null;
+  let hastaTime: number | null = null;
+
+  if (fechaDesde) desdeTime = new Date(fechaDesde).getTime();
+  if (fechaHasta) hastaTime = new Date(fechaHasta).getTime();
+
+  // Si el usuario se confunde y pone desde > hasta, intercambiamos
+  if (desdeTime !== null && hastaTime !== null && desdeTime > hastaTime) {
+    const tmp = desdeTime;
+    desdeTime = hastaTime;
+    hastaTime = tmp;
+  }
+
+  return asistencias.filter((a) => {
+    const t = new Date(a.fecha_real).getTime();
+    if (desdeTime !== null && t < desdeTime) return false;
+    if (hastaTime !== null && t > hastaTime) return false;
+    return true;
+  });
+};
+
 // Componente principal
 const ReportesTab: React.FC = () => {
   const [instituciones] = useState<Institucion[]>(mockInstituciones);
@@ -285,6 +314,10 @@ const ReportesTab: React.FC = () => {
   const [sedeFilter, setSedeFilter] = useState<SedeFilter>('all');
   const [aulaFilter, setAulaFilter] = useState<AulaFilter>('all');
   const [search, setSearch] = useState('');
+
+  // NUEVO: rango de fechas
+  const [fechaDesde, setFechaDesde] = useState<string>('');
+  const [fechaHasta, setFechaHasta] = useState<string>('');
 
   // Aulas filtradas
   const sedesFiltradas = useMemo(() => {
@@ -325,122 +358,133 @@ const ReportesTab: React.FC = () => {
   }, [aulasFiltradas, aulaFilter]);
 
   // Cálculo de reportes
+  const reporteAula: ReporteAulaResumen | null = useMemo(() => {
+    if (!aulaSeleccionada) return null;
 
-  const reporteAula: ReporteAulaResumen | null =
-    useMemo(() => {
-      if (!aulaSeleccionada) return null;
+    const sede = sedes.find((s) => s.id === aulaSeleccionada.id_sede);
+    const inst = instituciones.find((i) => i.id === sede?.id_inst);
 
-      const sede = sedes.find((s) => s.id === aulaSeleccionada.id_sede);
-      const inst = instituciones.find((i) => i.id === sede?.id_inst);
+    const estAula = estudiantes.filter(
+      (e) => e.id_aula === aulaSeleccionada.id,
+    );
 
-      const estAula = estudiantes.filter(
-        (e) => e.id_aula === aulaSeleccionada.id,
+    const asistAulaRaw = asistencias.filter(
+      (a) => a.id_aula === aulaSeleccionada.id,
+    );
+    const asistAula = filtrarAsistenciasPorRango(
+      asistAulaRaw,
+      fechaDesde,
+      fechaHasta,
+    );
+
+    const notasAula = notas.filter((n) =>
+      estAula.some((e) => e.id === n.id_estudiante),
+    );
+
+    // asistencia promedio aula = promedio de % individuales
+    const porcentajesEst = estAula.map((e) =>
+      calcularPorcentajeAsistenciaEst(
+        asistAula.filter((a) => a.id_estudiante === e.id),
+      ),
+    );
+    const promedioAsistencia =
+      porcentajesEst.length === 0
+        ? 0
+        : porcentajesEst.reduce((acc, v) => acc + v, 0) /
+          porcentajesEst.length;
+
+    const promedioInside = calcularPromedioNotasPorPrograma(
+      notasAula,
+      componentes,
+      'INSIDECLASSROOM',
+    );
+    const promedioOutside = calcularPromedioNotasPorPrograma(
+      notasAula,
+      componentes,
+      'OUTSIDECLASSROOM',
+    );
+
+    return {
+      id_aula: aulaSeleccionada.id,
+      nombre_aula: `${aulaSeleccionada.grado}°${aulaSeleccionada.grupo} — Aula #${aulaSeleccionada.id}`,
+      institucion: inst?.nombre ?? 'Sin institución',
+      sede: sede?.nombre ?? 'Sin sede',
+      total_estudiantes: estAula.length,
+      porcentaje_asistencia: promedioAsistencia,
+      promedio_inside: promedioInside,
+      promedio_outside: promedioOutside,
+    };
+  }, [
+    aulaSeleccionada,
+    sedes,
+    instituciones,
+    estudiantes,
+    asistencias,
+    notas,
+    componentes,
+    fechaDesde,
+    fechaHasta,
+  ]);
+
+  const reporteEstudiantes: ReporteEstudianteAula[] = useMemo(() => {
+    if (!aulaSeleccionada) return [];
+
+    const estAula = estudiantes.filter(
+      (e) => e.id_aula === aulaSeleccionada.id,
+    );
+    const asistAulaRaw = asistencias.filter(
+      (a) => a.id_aula === aulaSeleccionada.id,
+    );
+    const asistAula = filtrarAsistenciasPorRango(
+      asistAulaRaw,
+      fechaDesde,
+      fechaHasta,
+    );
+    const notasAula = notas.filter((n) =>
+      estAula.some((e) => e.id === n.id_estudiante),
+    );
+
+    return estAula.map<ReporteEstudianteAula>((e) => {
+      const asistEst = asistAula.filter(
+        (a) => a.id_estudiante === e.id,
       );
-      const asistAula = asistencias.filter(
-        (a) => a.id_aula === aulaSeleccionada.id,
-      );
-      const notasAula = notas.filter((n) =>
-        estAula.some((e) => e.id === n.id_estudiante),
+      const notasEst = notasAula.filter(
+        (n) => n.id_estudiante === e.id,
       );
 
-      // asistencia promedio aula = promedio de % individuales
-      const porcentajesEst = estAula.map((e) =>
-        calcularPorcentajeAsistenciaEst(
-          asistAula.filter((a) => a.id_estudiante === e.id),
-        ),
-      );
-      const promedioAsistencia =
-        porcentajesEst.length === 0
-          ? 0
-          : porcentajesEst.reduce((acc, v) => acc + v, 0) /
-            porcentajesEst.length;
+      const porcentajeAsis = calcularPorcentajeAsistenciaEst(asistEst);
 
       const promedioInside = calcularPromedioNotasPorPrograma(
-        notasAula,
+        notasEst,
         componentes,
         'INSIDECLASSROOM',
       );
       const promedioOutside = calcularPromedioNotasPorPrograma(
-        notasAula,
+        notasEst,
         componentes,
         'OUTSIDECLASSROOM',
       );
 
       return {
-        id_aula: aulaSeleccionada.id,
-        nombre_aula: `${aulaSeleccionada.grado}°${aulaSeleccionada.grupo} — Aula #${aulaSeleccionada.id}`,
-        institucion: inst?.nombre ?? 'Sin institución',
-        sede: sede?.nombre ?? 'Sin sede',
-        total_estudiantes: estAula.length,
-        porcentaje_asistencia: promedioAsistencia,
+        id_estudiante: e.id,
+        nombre_completo: `${e.nombres} ${e.apellidos}`,
+        documento: e.num_doc,
+        porcentaje_asistencia: porcentajeAsis,
         promedio_inside: promedioInside,
         promedio_outside: promedioOutside,
       };
-    }, [
-      aulaSeleccionada,
-      sedes,
-      instituciones,
-      estudiantes,
-      asistencias,
-      notas,
-      componentes,
-    ]);
-
-  const reporteEstudiantes: ReporteEstudianteAula[] =
-    useMemo(() => {
-      if (!aulaSeleccionada) return [];
-
-      const estAula = estudiantes.filter(
-        (e) => e.id_aula === aulaSeleccionada.id,
-      );
-      const asistAula = asistencias.filter(
-        (a) => a.id_aula === aulaSeleccionada.id,
-      );
-      const notasAula = notas.filter((n) =>
-        estAula.some((e) => e.id === n.id_estudiante),
-      );
-
-      return estAula.map<ReporteEstudianteAula>((e) => {
-        const asistEst = asistAula.filter(
-          (a) => a.id_estudiante === e.id,
-        );
-        const notasEst = notasAula.filter(
-          (n) => n.id_estudiante === e.id,
-        );
-
-        const porcentajeAsis =
-          calcularPorcentajeAsistenciaEst(asistEst);
-
-        const promedioInside = calcularPromedioNotasPorPrograma(
-          notasEst,
-          componentes,
-          'INSIDECLASSROOM',
-        );
-        const promedioOutside = calcularPromedioNotasPorPrograma(
-          notasEst,
-          componentes,
-          'OUTSIDECLASSROOM',
-        );
-
-        return {
-          id_estudiante: e.id,
-          nombre_completo: `${e.nombres} ${e.apellidos}`,
-          documento: e.num_doc,
-          porcentaje_asistencia: porcentajeAsis,
-          promedio_inside: promedioInside,
-          promedio_outside: promedioOutside,
-        };
-      });
-    }, [
-      aulaSeleccionada,
-      estudiantes,
-      asistencias,
-      notas,
-      componentes,
-    ]);
+    });
+  }, [
+    aulaSeleccionada,
+    estudiantes,
+    asistencias,
+    notas,
+    componentes,
+    fechaDesde,
+    fechaHasta,
+  ]);
 
   // Stats generales para arriba
-
   const totalAulasVista = aulasFiltradas.length;
   const totalEstudiantesVista = estudiantes.filter((e) =>
     aulasFiltradas.some((a) => a.id === e.id_aula),
@@ -453,8 +497,13 @@ const ReportesTab: React.FC = () => {
       const estAula = estudiantes.filter(
         (e) => e.id_aula === aula.id,
       );
-      const asistAula = asistencias.filter(
+      const asistAulaRaw = asistencias.filter(
         (a) => a.id_aula === aula.id,
+      );
+      const asistAula = filtrarAsistenciasPorRango(
+        asistAulaRaw,
+        fechaDesde,
+        fechaHasta,
       );
 
       const porcentajesEst = estAula.map((e) =>
@@ -475,7 +524,7 @@ const ReportesTab: React.FC = () => {
       porcentajesPorAula.reduce((acc, v) => acc + v, 0) /
       porcentajesPorAula.length
     );
-  }, [aulasFiltradas, estudiantes, asistencias]);
+  }, [aulasFiltradas, estudiantes, asistencias, fechaDesde, fechaHasta]);
 
   // RENDER
   return (
@@ -488,7 +537,8 @@ const ReportesTab: React.FC = () => {
               Reportes de Desempeño
             </CardTitle>
             <CardDescription>
-              Análisis integral de asistencia y desempeño académico por institución, sede y aula
+              Análisis de asistencia y desempeño académico por institución, sede, aula
+              y rango de fechas.
             </CardDescription>
           </div>
         </div>
@@ -531,12 +581,15 @@ const ReportesTab: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-green-700 font-semibold">Asistencia Promedio</p>
-                <p className="text-3xl font-bold text-green-900">{asistenciaPromedioVista.toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-green-900">
+                  {asistenciaPromedioVista.toFixed(1)}%
+                </p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* FILTROS PRINCIPALES */}
         <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl animate-fadeIn">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -600,13 +653,55 @@ const ReportesTab: React.FC = () => {
                 disabled={sedeFilter === 'all'}
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="all">Selecciona aula o primero</option>
+                <option value="all">Selecciona aula primero</option>
                 {aulasFiltradas.map((a) => (
                   <option key={a.id} value={a.id}>
                     Grado {a.grado}°{a.grupo}
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* RANGO DE FECHAS + BUSCADOR */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Desde (fecha real)
+              </label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Hasta
+              </label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600"
+              />
+            </div>
+            <div className="flex flex-col justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setFechaDesde('');
+                  setFechaHasta('');
+                }}
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 hover:bg-gray-100"
+              >
+                Limpiar rango de fechas
+              </button>
+              <p className="text-[11px] text-gray-500">
+                El porcentaje de asistencia se calcula solo con las asistencias
+                registradas dentro de este rango (si se define).
+              </p>
             </div>
           </div>
 
@@ -631,6 +726,8 @@ const ReportesTab: React.FC = () => {
           <ReportesDetalle
             aulaResumen={reporteAula}
             estudiantesDetalle={reporteEstudiantes}
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
           />
         </div>
       </CardContent>

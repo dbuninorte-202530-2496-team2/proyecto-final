@@ -4,6 +4,7 @@ import type { TipoDocumento } from '../../../types/tipoDocumento';
 import type { Aula } from '../../../types/aula';
 
 import EstudiantesForm from './EstudiantesForm';
+import MoverEstudianteForm from './MoverEstudianteForm';
 
 import {
   Card,
@@ -21,6 +22,7 @@ import {
   Edit,
   Trash2,
   Eye,
+  MoveRight,
 } from 'lucide-react';
 
 type AulaFilter = number | 'all';
@@ -72,6 +74,14 @@ const mockEstudiantes: Estudiante[] = [
   },
 ];
 
+// Helpers para programa y aulas
+const getProgramaFromGrado = (grado: number): 'INSIDE' | 'OUTSIDE' => {
+  return grado === 4 || grado === 5 ? 'INSIDE' : 'OUTSIDE';
+};
+
+const getAulaById = (aulas: Aula[], id: number | null | undefined) =>
+  aulas.find((a) => a.id === id) ?? null;
+
 const EstudiantesTab: React.FC = () => {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>(mockEstudiantes);
   const [tiposDoc] = useState<TipoDocumento[]>(mockTipoDoc);
@@ -94,10 +104,15 @@ const EstudiantesTab: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Estado para mover estudiante
+  const [estudianteMover, setEstudianteMover] = useState<Estudiante | null>(null);
+  const [isMoverOpen, setIsMoverOpen] = useState(false);
+
   // Filtros y búsqueda
   const estudiantesFiltrados = useMemo(() => {
     return estudiantes.filter((e) => {
-      const coincideAula = selectedAulaId === 'all' || e.id_aula === selectedAulaId;
+      const coincideAula =
+        selectedAulaId === 'all' || e.id_aula === selectedAulaId;
 
       const termino = search.toLowerCase().trim();
       const coincideBusqueda =
@@ -137,14 +152,15 @@ const EstudiantesTab: React.FC = () => {
     setFormError(null);
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
 
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === 'tipo_doc' ||
-        name === 'id_aula'
+        name === 'tipo_doc' || name === 'id_aula'
           ? Number(value)
           : name === 'score_in' || name === 'score_out'
           ? value === ''
@@ -194,7 +210,10 @@ const EstudiantesTab: React.FC = () => {
         prev.map((e) => (e.id === formData.id ? payload : e)),
       );
     } else {
-      setEstudiantes((prev) => [...prev, { ...payload, id: Math.max(...prev.map((e) => e.id), 0) + 1 }]);
+      setEstudiantes((prev) => [
+        ...prev,
+        { ...payload, id: Math.max(...prev.map((e) => e.id), 0) + 1 },
+      ]);
     }
 
     setIsSubmitting(false);
@@ -204,6 +223,65 @@ const EstudiantesTab: React.FC = () => {
   const handleDelete = (id: number) => {
     if (!window.confirm('¿Eliminar este estudiante?')) return;
     setEstudiantes((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  // Lógica para mover estudiante de aula
+
+  const abrirMover = (estudiante: Estudiante) => {
+    setEstudianteMover(estudiante);
+    setIsMoverOpen(true);
+  };
+
+  const cerrarMover = () => {
+    setIsMoverOpen(false);
+    setEstudianteMover(null);
+  };
+
+  const aulaActual = getAulaById(
+    aulas,
+    estudianteMover ? estudianteMover.id_aula : null,
+  );
+
+  // Aulas destino compatibles (mismo tipo de programa)
+  const aulasDestino = useMemo(() => {
+    if (!estudianteMover || !aulaActual) return [];
+
+    const programaActual = getProgramaFromGrado(aulaActual.grado);
+    return aulas.filter(
+      (a) =>
+        a.id !== aulaActual.id &&
+        getProgramaFromGrado(a.grado) === programaActual,
+    );
+  }, [estudianteMover, aulaActual, aulas]);
+
+  const handleConfirmMover = (idAulaDestino: number) => {
+    if (!estudianteMover || !aulaActual) return;
+
+    const aulaDestino = getAulaById(aulas, idAulaDestino);
+    if (!aulaDestino) return;
+
+    const programaActual = getProgramaFromGrado(aulaActual.grado);
+    const programaDestino = getProgramaFromGrado(aulaDestino.grado);
+
+    if (programaActual !== programaDestino) {
+      alert(
+        'No puedes mezclar 4º–5º con 9º–10º. El aula destino debe ser del mismo tipo de programa.',
+      );
+      return;
+    }
+
+    setEstudiantes((prev) =>
+      prev.map((e) =>
+        e.id === estudianteMover.id
+          ? {
+              ...e,
+              id_aula: idAulaDestino,
+            }
+          : e,
+      ),
+    );
+
+    cerrarMover();
   };
 
   // Resúmenes
@@ -267,7 +345,11 @@ const EstudiantesTab: React.FC = () => {
 
           <select
             value={selectedAulaId}
-            onChange={(e) => setSelectedAulaId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            onChange={(e) =>
+              setSelectedAulaId(
+                e.target.value === 'all' ? 'all' : Number(e.target.value),
+              )
+            }
             className="px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all hover:border-green-300 bg-white font-medium"
           >
             <option value="all">Todas las aulas</option>
@@ -284,12 +366,24 @@ const EstudiantesTab: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Estudiante</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Documento</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Aula</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Score IN</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Score OUT</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Acciones</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  Estudiante
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  Documento
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  Aula
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                  Score IN
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                  Score OUT
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -304,13 +398,16 @@ const EstudiantesTab: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-sm">
-                          {estudiante.nombres.charAt(0)}{estudiante.apellidos.charAt(0)}
+                          {estudiante.nombres.charAt(0)}
+                          {estudiante.apellidos.charAt(0)}
                         </div>
                         <div>
                           <div className="font-semibold text-gray-900">
                             {estudiante.nombres} {estudiante.apellidos}
                           </div>
-                          <div className="text-xs text-gray-500">{getAulaLabel(estudiante.id_aula)}</div>
+                          <div className="text-xs text-gray-500">
+                            {getAulaLabel(estudiante.id_aula)}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -319,7 +416,9 @@ const EstudiantesTab: React.FC = () => {
                         <span className="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium text-xs">
                           {getTipoDocLabel(estudiante.tipo_doc)}
                         </span>
-                        <div className="text-gray-600 mt-1">{estudiante.num_doc}</div>
+                        <div className="text-gray-600 mt-1">
+                          {estudiante.num_doc}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -348,6 +447,14 @@ const EstudiantesTab: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          onClick={() => abrirMover(estudiante)}
+                          title="Mover de aula"
+                          className="p-2 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                        >
+                          <MoveRight className="w-4 h-4" />
+                          Mover
+                        </button>
+                        <button
                           onClick={() => openEditForm(estudiante)}
                           title="Editar"
                           className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -367,7 +474,10 @@ const EstudiantesTab: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
                     No hay estudiantes que coincidan con los filtros
                   </td>
                 </tr>
@@ -382,8 +492,12 @@ const EstudiantesTab: React.FC = () => {
             <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-blue-600 font-semibold">Total Estudiantes</p>
-                  <p className="text-2xl font-bold text-blue-900">{totalEstudiantes}</p>
+                  <p className="text-sm text-blue-600 font-semibold">
+                    Total Estudiantes
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    {totalEstudiantes}
+                  </p>
                 </div>
                 <Users className="w-8 h-8 text-blue-400 opacity-70" />
               </div>
@@ -392,8 +506,12 @@ const EstudiantesTab: React.FC = () => {
             <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-emerald-600 font-semibold">Con Scores</p>
-                  <p className="text-2xl font-bold text-emerald-900">{totalConScore}</p>
+                  <p className="text-sm text-emerald-600 font-semibold">
+                    Con Scores
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-900">
+                    {totalConScore}
+                  </p>
                 </div>
                 <BookOpen className="w-8 h-8 text-emerald-400 opacity-70" />
               </div>
@@ -402,8 +520,12 @@ const EstudiantesTab: React.FC = () => {
             <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-purple-600 font-semibold">Score Promedio (IN)</p>
-                  <p className="text-2xl font-bold text-purple-900">{scorePromedio}</p>
+                  <p className="text-sm text-purple-600 font-semibold">
+                    Score Promedio (IN)
+                  </p>
+                  <p className="text-2xl font-bold text-purple-900">
+                    {scorePromedio}
+                  </p>
                 </div>
                 <Eye className="w-8 h-8 text-purple-400 opacity-70" />
               </div>
@@ -412,6 +534,7 @@ const EstudiantesTab: React.FC = () => {
         )}
       </CardContent>
 
+      {/* Modal crear/editar */}
       {isFormOpen && (
         <EstudiantesForm
           isEditing={isEditing}
@@ -425,6 +548,16 @@ const EstudiantesTab: React.FC = () => {
           onChange={handleFormChange}
         />
       )}
+
+      {/* Mover de aula */}
+      <MoverEstudianteForm
+        isOpen={isMoverOpen}
+        estudiante={estudianteMover}
+        aulaActual={aulaActual}
+        aulasDestino={aulasDestino}
+        onClose={cerrarMover}
+        onConfirm={handleConfirmMover}
+      />
     </Card>
   );
 };

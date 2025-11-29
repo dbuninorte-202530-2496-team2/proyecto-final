@@ -14,11 +14,15 @@ import {
 interface ReportesDetalleProps {
   aulaResumen: ReporteAulaResumen | null;
   estudiantesDetalle: ReporteEstudianteAula[];
+  fechaDesde?: string;
+  fechaHasta?: string;
 }
 
 const ReportesDetalle: React.FC<ReportesDetalleProps> = ({
   aulaResumen,
   estudiantesDetalle,
+  fechaDesde,
+  fechaHasta,
 }) => {
   if (!aulaResumen) {
     return (
@@ -38,8 +42,11 @@ const ReportesDetalle: React.FC<ReportesDetalleProps> = ({
     promedio_outside,
   } = aulaResumen;
 
+  const hayRango = Boolean(fechaDesde || fechaHasta);
+
   return (
     <div className="mt-4 space-y-6">
+      {/* Resumen superior */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
@@ -57,6 +64,12 @@ const ReportesDetalle: React.FC<ReportesDetalleProps> = ({
                 <MapPin className="w-3 h-3" />
                 {sede}
               </p>
+              {hayRango && (
+                <p className="text-[11px] text-emerald-700 mt-1">
+                  Rango:{' '}
+                  {fechaDesde || 'inicio'} {'→'} {fechaHasta || 'hoy'}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -91,7 +104,8 @@ const ReportesDetalle: React.FC<ReportesDetalleProps> = ({
                 {porcentaje_asistencia.toFixed(1)}%
               </p>
               <p className="text-[11px] text-green-700 mt-1">
-                Sobre registros de clase
+                Calculada sobre registros de clase
+                {hayRango && ' del rango seleccionado'}
               </p>
             </div>
           </div>

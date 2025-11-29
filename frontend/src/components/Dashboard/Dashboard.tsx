@@ -1,9 +1,8 @@
 import { useAuth } from '../../context/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
 import { DashboardHeader } from './DashboardHeader';
-import { ClasesTab } from './tabs/ClasesTab';
-import  NotasTab  from './tabs/NotasTab';
-import  ReportesTab  from './tabs/ReportesTab';
+import NotasTab from './tabs/NotasTab';
+import ReportesTab from './tabs/ReportesTab';
 import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { AulasTab } from './tabs/AulasTab';
@@ -12,7 +11,9 @@ import EstudiantesTab from './tabs/EstudiantesTab';
 import HorariosTab from './tabs/HorariosTab';
 import RegistroClasesTab from './tabs/RegistroClasesTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
-import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
+import ReposicionesTab from './tabs/ReposicionesTab';
+import SupervisionTab from './tabs/SupervisionTab';
+import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck } from 'lucide-react';
 import AsignacionesTab from './tabs/AsignacionesTab';
 
 export default function Dashboard() {
@@ -21,7 +22,7 @@ export default function Dashboard() {
   const esTutor = rol === 'TUTOR';
 
   const tabs = [
-    ...(tienePermisoAdministrativo ? [
+      ...(tienePermisoAdministrativo ? [
       { value: 'instituciones', label: 'Instituciones', icon: Building2 },
       { value: 'sedes', label: 'Sedes', icon: MapPin },
       { value: 'aulas', label: 'Aulas', icon: Zap },
@@ -29,6 +30,8 @@ export default function Dashboard() {
       { value: 'estudiantes', label: 'Estudiantes', icon: BookOpen },
       { value: 'horarios', label: 'Horarios', icon: Clock },
       { value: 'asignaciones', label: 'Asignaciones', icon: FileText },
+      { value: 'supervision', label: 'Supervisión', icon: UserCheck },
+      { value: 'reposiciones', label: 'Reposiciones', icon: Calendar },
     ] : []),
     { value: 'clases', label: esTutor ? 'Mis Clases' : 'Registro de Clases', icon: BookOpen },
     { value: 'notas', label: 'Notas', icon: FileText },
@@ -85,6 +88,15 @@ export default function Dashboard() {
                   <TabsContent value="asignaciones">
                     <AsignacionesTab />
                   </TabsContent>
+                  <TabsContent value="supervision">
+                    <SupervisionTab />
+                  </TabsContent>
+                  <TabsContent value="reposiciones">
+                    <ReposicionesTab />
+                  </TabsContent>
+                  <TabsContent value="configuracion">
+                    <ConfiguracionTab />
+                  </TabsContent>
                 </>
               )}
 
@@ -96,27 +108,9 @@ export default function Dashboard() {
                 <NotasTab />
               </TabsContent>
 
-              <TabsContent value="clases">
-                <ClasesTab />
-              </TabsContent>
-
-              <TabsContent value="notas">
-                <NotasTab />
-              </TabsContent>
-
-              <TabsContent value="configuracion">
-                <ConfiguracionTab />
-              </TabsContent>
-
               <TabsContent value="reportes">
                 <ReportesTab />
               </TabsContent>
-
-              {tienePermisoAdministrativo && (
-                <TabsContent value="configuracion">
-                  <ConfiguracionTab />
-                </TabsContent>
-              )}
             </div>
           </Tabs>
         </div>
