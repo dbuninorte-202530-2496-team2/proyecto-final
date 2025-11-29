@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-
 import type { Personal } from '../../../types/personal';
 import type { Aula } from '../../../types/aula';
 import type { Estudiante } from '../../../types/estudiante';

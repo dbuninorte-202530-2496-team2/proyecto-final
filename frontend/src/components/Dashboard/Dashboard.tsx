@@ -1,10 +1,9 @@
 import { useAuth } from '../../context/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
 import { DashboardHeader } from './DashboardHeader';
-import { AsignacionesTab } from './tabs/AsignacionesTab';
 import { ClasesTab } from './tabs/ClasesTab';
-import { NotasTab } from './tabs/NotasTab';
-import { ReportesTab } from './tabs/ReportesTab';
+import  NotasTab  from './tabs/NotasTab';
+import  ReportesTab  from './tabs/ReportesTab';
 import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { AulasTab } from './tabs/AulasTab';
@@ -14,6 +13,7 @@ import HorariosTab from './tabs/HorariosTab';
 import RegistroClasesTab from './tabs/RegistroClasesTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
+import AsignacionesTab from './tabs/AsignacionesTab';
 
 export default function Dashboard() {
   const { rol } = useAuth();
