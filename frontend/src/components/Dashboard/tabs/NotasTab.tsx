@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../ui/Card';
 import { useAuth } from '../../../context/AuthContext';
@@ -9,6 +10,8 @@ export function NotasTab() {
   const [selectedPeriodo, setSelectedPeriodo] = useState('1');
   const [selectedAula, setSelectedAula] = useState('1');
 =======
+=======
+>>>>>>> Stashed changes
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Personal } from '../../../types/personal';
 import type { Aula } from '../../../types/aula';

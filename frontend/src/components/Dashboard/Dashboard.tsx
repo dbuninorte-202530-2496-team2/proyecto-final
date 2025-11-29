@@ -2,6 +2,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
 import { DashboardHeader } from './DashboardHeader';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { AsignacionesTab } from './tabs/AsignacionesTab';
 import { ClasesTab } from './tabs/ClasesTab';
 import { NotasTab } from './tabs/NotasTab';
@@ -10,6 +11,8 @@ import { InstitucionesTab } from './tabs/InstitucionesTab';
 import { SedesTab } from './tabs/SedesTab';
 import { ConfiguracionTab } from './tabs/ConfiguracionTab';
 =======
+=======
+>>>>>>> Stashed changes
 import NotasTab from './tabs/NotasTab';
 import ReportesTab from './tabs/ReportesTab';
 import { InstitucionesTab } from './tabs/InstitucionesTab';
@@ -23,6 +26,9 @@ import ConfiguracionTab from './tabs/ConfiguracionTab';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3 } from 'lucide-react';
 import AsignacionesTab from './tabs/AsignacionesTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 export default function Dashboard() {
@@ -119,13 +125,11 @@ export default function Dashboard() {
                 <AsignacionesTab />
               </TabsContent>
 
-              <TabsContent value="clases">
-                <ClasesTab />
-              </TabsContent>
-
-              <TabsContent value="notas">
-                <NotasTab />
-              </TabsContent>
+              {esTutor &&
+                <TabsContent value="mi-horario">
+                  <HorariosTutorTab />
+                </TabsContent>
+              }
 
 <<<<<<< Updated upstream
               <TabsContent value="reportes">
