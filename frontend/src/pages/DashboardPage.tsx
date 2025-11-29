@@ -2,7 +2,7 @@ import { useAuth } from '../context/AuthContext';
 import Dashboard from '../components/Dashboard/Dashboard';
 
 export function DashboardPage() {
-  const { usuario, rol, logout } = useAuth();
+  const { usuario, rol } = useAuth();
 
   if (!usuario || !rol) {
     return null; // O un loader
