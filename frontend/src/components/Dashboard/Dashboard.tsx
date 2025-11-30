@@ -13,8 +13,10 @@ import RegistroClasesTab from './tabs/RegistroClasesTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
 import ReposicionesTab from './tabs/ReposicionesTab';
 import SupervisionTab from './tabs/SupervisionTab';
-import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck } from 'lucide-react';
+import HorariosTutorTab from './tabs/HorariosTutorTab';
 import AsignacionesTab from './tabs/AsignacionesTab';
+import ReportesAvanzadosTab from './tabs/ReportesAvanzadosTab';
+import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck } from 'lucide-react';
 
 export default function Dashboard() {
   const { rol } = useAuth();
@@ -22,7 +24,7 @@ export default function Dashboard() {
   const esTutor = rol === 'TUTOR';
 
   const tabs = [
-      ...(tienePermisoAdministrativo ? [
+    ...(tienePermisoAdministrativo ? [
       { value: 'instituciones', label: 'Instituciones', icon: Building2 },
       { value: 'sedes', label: 'Sedes', icon: MapPin },
       { value: 'aulas', label: 'Aulas', icon: Zap },
@@ -34,9 +36,11 @@ export default function Dashboard() {
       { value: 'reposiciones', label: 'Reposiciones', icon: Calendar },
     ] : []),
     { value: 'clases', label: esTutor ? 'Mis Clases' : 'Registro de Clases', icon: BookOpen },
+    ...(esTutor ? [{ value: 'mi-horario', label: 'Mi Horario', icon: Clock }] : []),
     { value: 'notas', label: 'Notas', icon: FileText },
     ...(tienePermisoAdministrativo ? [
       { value: 'configuracion', label: 'Configuración', icon: Settings },
+      { value: 'reportes-avanzados', label: 'Reportes Avanzados', icon: BarChart3 },
     ] : []),
     { value: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -52,8 +56,8 @@ export default function Dashboard() {
           <Tabs defaultValue={esTutor ? "clases" : "instituciones"}>
             <TabsList className="flex flex-wrap h-auto gap-2 bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-xl border border-gray-200">
               {tabs.map(({ value, label, icon: Icon }) => (
-                <TabsTrigger 
-                  key={value} 
+                <TabsTrigger
+                  key={value}
                   value={value}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-white data-[state=active]:bg-white data-[state=active]:text-green-700 data-[state=active]:shadow-sm"
                 >
@@ -97,11 +101,18 @@ export default function Dashboard() {
                   <TabsContent value="configuracion">
                     <ConfiguracionTab />
                   </TabsContent>
+                  <TabsContent value="reportes-avanzados">
+                    <ReportesAvanzadosTab />
+                  </TabsContent>
                 </>
               )}
 
               <TabsContent value="clases">
                 <RegistroClasesTab />
+              </TabsContent>
+
+              <TabsContent value="mi-horario">
+                <HorariosTutorTab />
               </TabsContent>
 
               <TabsContent value="notas">
