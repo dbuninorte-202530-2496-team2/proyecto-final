@@ -14,7 +14,7 @@ import { ValidRoles } from 'src/auth/interfaces';
 
 @Injectable()
 export class RolesService {
-  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) {}
+  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) { }
 
   async create(createRolDto: CreateRolDto) {
     const { nombre, descripcion } = createRolDto;
@@ -24,7 +24,7 @@ export class RolesService {
         `INSERT INTO rol (nombre, descripcion) 
          VALUES ($1, $2) 
          RETURNING id, nombre, descripcion`,
-        [nombre, descripcion || null],
+        [nombre.toUpperCase().trim(), descripcion || null],
       );
 
       return result.rows[0];
@@ -91,7 +91,7 @@ export class RolesService {
       // Verificar que el rol existe
       const rol = await this.findOne(id);
 
-      if (rol.nombre.toUpperCase() === ValidRoles.ADMINISTRADOR){
+      if (rol.nombre.toUpperCase() === ValidRoles.ADMINISTRADOR) {
         throw new ConflictException('No se pudo eliminar el rol: crítico para el sistema')
       }
 

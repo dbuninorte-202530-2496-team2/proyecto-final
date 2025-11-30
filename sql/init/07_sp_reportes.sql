@@ -286,3 +286,89 @@ BEGIN
     ORDER BY estudiante_nombre;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- Function: Reporte de notas ingresadas por un tutor (Autogestión)
+CREATE OR REPLACE FUNCTION fn_reporte_notas_tutor(
+    p_id_tutor INT,
+    p_fecha_inicio DATE DEFAULT NULL,
+    p_fecha_fin DATE DEFAULT NULL
+)
+RETURNS TABLE (
+    fecha_registro DATE, -- Nota: La tabla nota no tiene fecha de registro, usaremos la fecha actual o simulada si no existe columna de auditoría.
+                         -- REVISIÓN: La tabla nota NO tiene fecha. Usaremos solo los datos disponibles.
+    estudiante_nombre TEXT,
+    aula_grado INT,
+    aula_grupo INT,
+    componente_nombre TEXT,
+    valor_nota NUMERIC,
+    comentario TEXT
+) AS $$
+BEGIN
+    -- Nota: Como no hay fecha de registro en la tabla 'nota', este reporte mostrará
+    -- las notas actuales asignadas por el tutor, filtrando por la asignación del tutor al aula
+    -- si se quisiera filtrar por fechas (lo cual es complejo sin columna de fecha en nota).
+    -- Asumiremos que el reporte es del estado ACTUAL de las notas ingresadas por él.
+    
+    RETURN QUERY
+    SELECT 
+        CURRENT_DATE as fecha_registro, -- Placeholder
+        (e.nombre || ' ' || e.apellidos) as estudiante_nombre,
+        a.grado,
+        a.grupo,
+        c.nombre as componente_nombre,
+        n.valor,
+        n.comentario
+    FROM nota n
+    INNER JOIN estudiante e ON n.id_estudiante = e.id
+    INNER JOIN componente c ON n.id_comp = c.id
+    INNER JOIN estudiante_aula ea ON e.id = ea.id_estudiante
+    INNER JOIN aula a ON ea.id_aula = a.id
+    WHERE n.id_tutor = p_id_tutor
+      AND ea.fecha_desasignado IS NULL
+    ORDER BY a.grado, a.grupo, e.apellidos;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Function: Horario asignado al tutor (Autogestión)
+CREATE OR REPLACE FUNCTION fn_horario_tutor(
+    p_id_tutor INT,
+    p_id_periodo INT
+)
+RETURNS TABLE (
+    aula_grado INT,
+    aula_grupo INT,
+    sede_nombre TEXT,
+    dia_semana CHAR(2),
+    hora_inicio TIME,
+    hora_fin TIME
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT
+        a.grado,
+        a.grupo,
+        s.nombre as sede_nombre,
+        h.dia_sem,
+        h.hora_ini,
+        h.hora_fin
+    FROM tutor_aula ta
+    INNER JOIN aula a ON ta.id_aula = a.id
+    INNER JOIN sede s ON a.id_sede = s.id
+    INNER JOIN aula_horario_sem ahs ON a.id = ahs.id_aula
+    INNER JOIN horario h ON ahs.id_horario = h.id
+    INNER JOIN semana sem ON ahs.id_semana = sem.id
+    WHERE ta.id_tutor = p_id_tutor
+      AND ta.fecha_desasignado IS NULL
+      AND sem.id_periodo = p_id_periodo
+    ORDER BY 
+        CASE h.dia_sem
+            WHEN 'LU' THEN 1
+            WHEN 'MA' THEN 2
+            WHEN 'MI' THEN 3
+            WHEN 'JU' THEN 4
+            WHEN 'VI' THEN 5
+            WHEN 'SA' THEN 6
+        END,
+        h.hora_ini;
+END;
+$$ LANGUAGE plpgsql STABLE;

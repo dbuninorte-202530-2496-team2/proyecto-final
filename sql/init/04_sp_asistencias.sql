@@ -42,9 +42,9 @@ BEGIN
             p_id_aula, p_id_horario, p_fecha_real;
     END IF;
 
-    -- Validar que la clase haya sido dictada
-    IF NOT v_asistencia_tutor.dictoClase THEN
-        RAISE EXCEPTION 'No se puede registrar asistencia de estudiante porque el tutor NO dictó la clase.';
+    -- Validar que la clase haya sido dictada O tenga reposición programada
+    IF NOT v_asistencia_tutor.dictoClase AND v_asistencia_tutor.fecha_reposicion IS NULL THEN
+        RAISE EXCEPTION 'No se puede registrar asistencia: el tutor no dictó la clase y no hay fecha de reposición programada.';
     END IF;
 
     -- Registrar asistencia estudiante
@@ -122,37 +122,6 @@ BEGIN
 END;
 $$;
 
-
--- Procedure: Registrar fecha de reposición de clase
-CREATE OR REPLACE PROCEDURE sp_registrar_reposicion_clase(
-    p_id_asistencia_tutor INT,
-    p_fecha_reposicion DATE
-)
-LANGUAGE plpgsql AS $$
-DECLARE
-    v_dicto_clase BOOLEAN;
-BEGIN
-    SELECT dictoClase INTO v_dicto_clase
-    FROM asistenciaTut
-    WHERE id = p_id_asistencia_tutor;
-    
-    IF v_dicto_clase IS NULL THEN
-        RAISE EXCEPTION 'La asistencia con id % no existe', p_id_asistencia_tutor;
-    END IF;
-    
-    IF v_dicto_clase THEN
-        RAISE EXCEPTION 'No se puede registrar reposición para una clase que sí se dictó';
-    END IF;
-    
-    UPDATE asistenciaTut
-    SET fecha_reposicion = p_fecha_reposicion
-    WHERE id = p_id_asistencia_tutor;
-    
-    RAISE NOTICE 'Fecha de reposición % registrada para la asistencia %', 
-        p_fecha_reposicion, p_id_asistencia_tutor;
-END;
-$$;
-
 -- Procedure: Registrar asistencias masivas de estudiantes de un aula (validada)
 CREATE OR REPLACE PROCEDURE sp_registrar_asistencia_aula_masiva(
     p_id_aula INT,
@@ -180,8 +149,8 @@ BEGIN
             p_id_aula, p_id_horario, p_fecha_real;
     END IF;
 
-    IF NOT v_tutor_asistencia.dictoClase THEN
-        RAISE EXCEPTION 'No se puede registrar asistencia masiva: el tutor NO dictó la clase.';
+    IF NOT v_tutor_asistencia.dictoClase AND v_tutor_asistencia.fecha_reposicion IS NULL THEN
+        RAISE EXCEPTION 'No se puede registrar asistencia masiva: el tutor no dictó la clase y no hay fecha de reposición programada.';
     END IF;
 
     -- Recorrer estudiantes del aula
@@ -231,54 +200,3 @@ BEGIN
     ORDER BY e.apellidos, e.nombre;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
--- Procedure: Marcar todos como presentes (útil cuando casi todos asistieron)(VALIDADA)
-CREATE OR REPLACE PROCEDURE sp_marcar_todos_presentes(
-    p_id_aula INT,
-    p_id_horario INT,
-    p_fecha_real DATE,
-    p_estudiantes_ausentes INT[] DEFAULT ARRAY[]::INT[]
-)
-LANGUAGE plpgsql AS $$
-DECLARE
-    v_tutor_asistencia RECORD;
-    v_est RECORD;
-    v_presente BOOLEAN;
-BEGIN
-    -- Validar existencia asistencia tutor
-    SELECT *
-    INTO v_tutor_asistencia
-    FROM asistenciaTut
-    WHERE id_aula = p_id_aula
-      AND id_horario = p_id_horario
-      AND fecha_real = p_fecha_real
-    LIMIT 1;
-
-    IF v_tutor_asistencia IS NULL THEN
-        RAISE EXCEPTION 'Primero debe registrar asistencia del tutor.';
-    END IF;
-
-    IF NOT v_tutor_asistencia.dictoClase THEN
-        RAISE EXCEPTION 'No se puede registrar asistencia: el tutor no dictó clase.';
-    END IF;
-
-    -- Loop estudiantes
-    FOR v_est IN
-        SELECT id_estudiante
-        FROM estudiante_aula
-        WHERE id_aula = p_id_aula
-          AND fecha_desasignado IS NULL
-    LOOP
-        v_presente := NOT (v_est.id_estudiante = ANY(p_estudiantes_ausentes));
-
-        CALL sp_registrar_asistencia_estudiante(
-            v_est.id_estudiante,
-            p_id_aula,
-            p_id_horario,
-            p_fecha_real,
-            v_presente
-        );
-    END LOOP;
-
-END;
-$$;

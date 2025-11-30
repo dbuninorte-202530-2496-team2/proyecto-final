@@ -1,6 +1,6 @@
-import { 
-  Injectable, 
-  Inject, 
+import {
+  Injectable,
+  Inject,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
@@ -14,7 +14,7 @@ import { AulaHorarioSemanaEntity } from './entities/aula-horario-semana.entity';
 export class AulaHorarioSemanaService {
   constructor(
     @Inject(PG_CONNECTION) private readonly pool: Pool,
-  ) {}
+  ) { }
 
   async findHorariosByAula(id_aula: number): Promise<AulaHorarioSemanaEntity[]> {
     try {
@@ -29,6 +29,7 @@ export class AulaHorarioSemanaService {
           ahs.id_aula,
           ahs.id_horario,
           ahs.id_semana,
+          ahs.fecha_programada,
           h.dia_sem,
           h.hora_ini,
           h.hora_fin,
@@ -53,22 +54,62 @@ export class AulaHorarioSemanaService {
   }
 
   async asignarHorario(
-    id_aula: number, 
+    id_aula: number,
     asignarHorarioDto: AsignarHorarioAulaDto
   ): Promise<AulaHorarioSemanaEntity> {
     const { id_horario, id_semana } = asignarHorarioDto;
 
     try {
-      // Verificar que el aula existe
-      const aulaCheck = await this.pool.query('SELECT id FROM aula WHERE id = $1', [id_aula]);
-      if (aulaCheck.rows.length === 0) {
+      // Obtener información completa del aula (grado, tipo_programa, jornada institución)
+      const aulaQuery = `
+        SELECT 
+          a.id,
+          a.grado,
+          a.tipo_programa,
+          i.jornada
+        FROM aula a
+        INNER JOIN sede s ON a.id_sede = s.id
+        INNER JOIN institucion i ON s.id_inst = i.id
+        WHERE a.id = $1
+      `;
+      const aulaResult = await this.pool.query(aulaQuery, [id_aula]);
+
+      if (aulaResult.rows.length === 0) {
         throw new NotFoundException(`Aula con id ${id_aula} no encontrada`);
       }
 
-      // Verificar que el horario existe
-      const horarioCheck = await this.pool.query('SELECT id FROM horario WHERE id = $1', [id_horario]);
-      if (horarioCheck.rows.length === 0) {
+      const aula = aulaResult.rows[0];
+      const tipoPrograma = aula.tipo_programa; // 1: INSIDE, 2: OUTSIDE
+      const jornada = aula.jornada; // MAÑANA, TARDE, MIXTA
+
+      // Obtener información del horario
+      const horarioQuery = `
+        SELECT 
+          id, 
+          dia_sem, 
+          hora_ini::text as hora_ini, 
+          hora_fin::text as hora_fin
+        FROM horario 
+        WHERE id = $1
+      `;
+      const horarioResult = await this.pool.query(horarioQuery, [id_horario]);
+
+      if (horarioResult.rows.length === 0) {
         throw new NotFoundException(`Horario con id ${id_horario} no encontrado`);
+      }
+
+      const horario = horarioResult.rows[0];
+      const diaSem = horario.dia_sem;
+      const horaIni = horario.hora_ini;
+      const horaFin = horario.hora_fin;
+
+      // Validar según tipo de programa
+      if (tipoPrograma === 1) {
+        // INSIDECLASSROOM (4° y 5°)
+        await this.validarHorarioINSIDE(diaSem, horaIni, horaFin, jornada);
+      } else if (tipoPrograma === 2) {
+        // OUTSIDECLASSROOM (9° y 10°)
+        await this.validarHorarioOUTSIDE(diaSem, horaIni, horaFin, jornada);
       }
 
       // Verificar que la semana existe
@@ -90,6 +131,9 @@ export class AulaHorarioSemanaService {
         );
       }
 
+      // Validar intensidad horaria semanal
+      await this.validarIntensidadHoraria(id_aula, id_semana, tipoPrograma);
+
       // Crear la asignación
       const insertQuery = `
         INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana)
@@ -109,6 +153,116 @@ export class AulaHorarioSemanaService {
     }
   }
 
+  /**
+   * Valida horarios para INSIDECLASSROOM (4° y 5°)
+   * - Lunes a viernes
+   * - 06:00 a 18:00
+   * - Respeta jornada de la institución
+   */
+  private async validarHorarioINSIDE(
+    diaSem: string,
+    horaIni: string,
+    horaFin: string,
+    jornada: string
+  ): Promise<void> {
+    // Validar días permitidos (lunes a viernes)
+    if (!['LU', 'MA', 'MI', 'JU', 'VI'].includes(diaSem)) {
+      throw new BadRequestException(
+        `INSIDECLASSROOM (4° y 5°) solo permite lunes a viernes. Día recibido: ${diaSem}`
+      );
+    }
+
+    // Validar rango general 06:00 - 18:00
+    if (horaIni < '06:00' || horaFin > '18:00') {
+      throw new BadRequestException(
+        `INSIDECLASSROOM debe estar entre 06:00 y 18:00. Horario recibido: ${horaIni} - ${horaFin}`
+      );
+    }
+
+    // Validar según jornada de la institución
+    if (jornada === 'MAÑANA') {
+      // Jornada mañana: 06:00 - 12:00
+      if (horaIni < '06:00' || horaFin > '12:00') {
+        throw new BadRequestException(
+          `La institución tiene jornada MAÑANA (06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
+        );
+      }
+    } else if (jornada === 'TARDE') {
+      // Jornada tarde: 12:00 - 18:00
+      if (horaIni < '12:00' || horaFin > '18:00') {
+        throw new BadRequestException(
+          `La institución tiene jornada TARDE (12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
+        );
+      }
+    } else if (jornada === 'MIXTA') {
+      // Jornada mixta: puede usar todo el rango 06:00 - 18:00
+      // Ya validado arriba
+    } else {
+      throw new BadRequestException(
+        `Jornada de institución no reconocida: ${jornada}`
+      );
+    }
+  }
+
+  /**
+   * Valida horarios para OUTSIDECLASSROOM (9° y 10°)
+   * - Lunes a sábado
+   * - Jornada contraria a la institución
+   */
+  private async validarHorarioOUTSIDE(
+    diaSem: string,
+    horaIni: string,
+    horaFin: string,
+    jornada: string
+  ): Promise<void> {
+    // Validar días permitidos (lunes a sábado)
+    if (!['LU', 'MA', 'MI', 'JU', 'VI', 'SA'].includes(diaSem)) {
+      throw new BadRequestException(
+        `OUTSIDECLASSROOM (9° y 10°) solo permite lunes a sábado. Día recibido: ${diaSem}`
+      );
+    }
+
+    // Validar duración máxima (3 horas = 180 minutos)
+    const [horaIniH, horaIniM] = horaIni.split(':').map(Number);
+    const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
+    const duracionMinutos = (horaFinH * 60 + horaFinM) - (horaIniH * 60 + horaIniM);
+
+    if (duracionMinutos > 180) {
+      throw new BadRequestException(
+        `OUTSIDECLASSROOM no puede exceder 3 horas (180 min). Duración: ${duracionMinutos} min`
+      );
+    }
+
+    // Validar jornada contraria
+    if (jornada === 'MAÑANA') {
+      // Jornada contraria es TARDE: 12:00 - 18:00
+      if (horaIni < '12:00' || horaFin > '18:00') {
+        throw new BadRequestException(
+          `La institución es jornada MAÑANA, OUTSIDECLASSROOM debe ser en jornada contraria (TARDE: 12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
+        );
+      }
+    } else if (jornada === 'TARDE') {
+      // Jornada contraria es MAÑANA: 06:00 - 12:00
+      if (horaIni < '06:00' || horaFin > '12:00') {
+        throw new BadRequestException(
+          `La institución es jornada TARDE, OUTSIDECLASSROOM debe ser en jornada contraria (MAÑANA: 06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
+        );
+      }
+    } else if (jornada === 'MIXTA') {
+      // Jornada mixta usa 06:00-18:00, por lo tanto la contraria es FUERA de ese rango
+      const dentroRangoNormal = horaIni >= '06:00' && horaFin <= '18:00';
+      if (dentroRangoNormal) {
+        throw new BadRequestException(
+          `La institución es jornada MIXTA (06:00-18:00), OUTSIDECLASSROOM debe ser FUERA del horario normal. Horario recibido: ${horaIni} - ${horaFin} está dentro del rango`
+        );
+      }
+    } else {
+      throw new BadRequestException(
+        `Jornada de institución no reconocida: ${jornada}`
+      );
+    }
+  }
+
   async crearSesionEspecifica(
     id_aula: number,
     crearSesionDto: CrearSesionEspecificaDto
@@ -116,16 +270,54 @@ export class AulaHorarioSemanaService {
     const { id_horario, fecha } = crearSesionDto;
 
     try {
-      // Verificar que el aula existe
-      const aulaCheck = await this.pool.query('SELECT id FROM aula WHERE id = $1', [id_aula]);
-      if (aulaCheck.rows.length === 0) {
+      // Obtener información completa del aula (igual que en asignarHorario)
+      const aulaQuery = `
+        SELECT 
+          a.id,
+          a.grado,
+          a.tipo_programa,
+          i.jornada
+        FROM aula a
+        INNER JOIN sede s ON a.id_sede = s.id
+        INNER JOIN institucion i ON s.id_inst = i.id
+        WHERE a.id = $1
+      `;
+      const aulaResult = await this.pool.query(aulaQuery, [id_aula]);
+
+      if (aulaResult.rows.length === 0) {
         throw new NotFoundException(`Aula con id ${id_aula} no encontrada`);
       }
 
-      // Verificar que el horario existe
-      const horarioCheck = await this.pool.query('SELECT id FROM horario WHERE id = $1', [id_horario]);
-      if (horarioCheck.rows.length === 0) {
+      const aula = aulaResult.rows[0];
+      const tipoPrograma = aula.tipo_programa;
+      const jornada = aula.jornada;
+
+      // Obtener información del horario
+      const horarioQuery = `
+        SELECT 
+          id, 
+          dia_sem, 
+          hora_ini::text as hora_ini, 
+          hora_fin::text as hora_fin
+        FROM horario 
+        WHERE id = $1
+      `;
+      const horarioResult = await this.pool.query(horarioQuery, [id_horario]);
+
+      if (horarioResult.rows.length === 0) {
         throw new NotFoundException(`Horario con id ${id_horario} no encontrado`);
+      }
+
+      const horario = horarioResult.rows[0];
+      const diaSem = horario.dia_sem;
+      const horaIni = horario.hora_ini;
+      const horaFin = horario.hora_fin;
+
+      // Validar según tipo de programa (igual que en asignarHorario)
+      if (tipoPrograma === 1) {
+        await this.validarHorarioINSIDE(diaSem, horaIni, horaFin, jornada);
+      } else if (tipoPrograma === 2) {
+        await this.validarHorarioOUTSIDE(diaSem, horaIni, horaFin, jornada);
       }
 
       // Buscar la semana que contiene esta fecha
@@ -156,6 +348,9 @@ export class AulaHorarioSemanaService {
         );
       }
 
+      // Validar intensidad horaria semanal
+      await this.validarIntensidadHoraria(id_aula, id_semana, tipoPrograma);
+
       // Crear la sesión
       const insertQuery = `
         INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana)
@@ -175,6 +370,37 @@ export class AulaHorarioSemanaService {
       throw new InternalServerErrorException(
         `Error al crear la sesión específica: ${error.message}`
       );
+    }
+  }
+
+  private async validarIntensidadHoraria(
+    id_aula: number,
+    id_semana: number,
+    tipoPrograma: number
+  ): Promise<void> {
+    const countQuery = `
+      SELECT COUNT(*) as count 
+      FROM aula_horario_sem 
+      WHERE id_aula = $1 AND id_semana = $2
+    `;
+    const countResult = await this.pool.query(countQuery, [id_aula, id_semana]);
+    const horasAsignadas = parseInt(countResult.rows[0].count, 10);
+
+    // +1 porque estamos intentando agregar una nueva
+    const horasTotales = horasAsignadas + 1;
+
+    if (tipoPrograma === 1) { // INSIDECLASSROOM (4° y 5°)
+      if (horasTotales > 2) {
+        throw new BadRequestException(
+          `INSIDECLASSROOM solo permite máximo 2 horas semanales. Actualmente tiene ${horasAsignadas} horas.`
+        );
+      }
+    } else if (tipoPrograma === 2) { // OUTSIDECLASSROOM (9° y 10°)
+      if (horasTotales > 3) {
+        throw new BadRequestException(
+          `OUTSIDECLASSROOM solo permite máximo 3 horas semanales. Actualmente tiene ${horasAsignadas} horas.`
+        );
+      }
     }
   }
 
@@ -217,8 +443,8 @@ export class AulaHorarioSemanaService {
       `;
       await this.pool.query(deleteQuery, [id_aula, id_horario, id_semana]);
 
-      return { 
-        message: `Asignación del horario ${id_horario} al aula ${id_aula} en la semana ${id_semana} eliminada correctamente` 
+      return {
+        message: `Asignación del horario ${id_horario} al aula ${id_aula} en la semana ${id_semana} eliminada correctamente`
       };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {

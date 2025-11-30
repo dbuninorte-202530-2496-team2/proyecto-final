@@ -1,5 +1,5 @@
 -- =====================================================
--- STORED PROCEDURES: GESTIÓN DE ASIGNACIONES
+-- STORED PROCEDURES: GESTIÓN DE ASIGNACIONES DE TUTORES
 -- =====================================================
 
 -- Procedure: Asignar tutor a un aula
@@ -13,36 +13,83 @@ DECLARE
     v_consec INT;
     v_tutor_actual INT;
 BEGIN
+    -- Validar que el aula existe
     IF NOT EXISTS (SELECT 1 FROM aula WHERE id = p_id_aula) THEN
         RAISE EXCEPTION 'El aula con id % no existe', p_id_aula;
     END IF;
     
+    -- Validar que el tutor existe y tiene el rol correcto
     IF NOT EXISTS (
         SELECT 1 FROM personal p
         INNER JOIN rol r ON p.id_rol = r.id
-        WHERE p.id = p_id_tutor AND r.nombre IN ('TUTOR')
+        WHERE p.id = p_id_tutor AND r.nombre = 'TUTOR'
     ) THEN
         RAISE EXCEPTION 'El tutor con id % no existe o no tiene el rol adecuado', p_id_tutor;
     END IF;
     
+    -- Verificar que el aula no tenga ya un tutor activo
     v_tutor_actual := fn_obtener_tutor_actual_aula(p_id_aula);
     
     IF v_tutor_actual IS NOT NULL THEN
-        RAISE EXCEPTION 'El aula ya tiene un tutor asignado (id: %). Use sp_cambiar_tutor_aula para cambiarlo', v_tutor_actual;
+        RAISE EXCEPTION 'El aula ya tiene un tutor asignado (id: %). Use sp_desasignar_tutor_aula primero o sp_cambiar_tutor_aula para reemplazarlo', 
+            v_tutor_actual;
     END IF;
     
+    -- Calcular el siguiente consecutivo
     SELECT COALESCE(MAX(consec), 0) + 1 INTO v_consec
     FROM tutor_aula
     WHERE id_aula = p_id_aula AND id_tutor = p_id_tutor;
     
+    -- Insertar la asignación
     INSERT INTO tutor_aula (id_tutor, id_aula, consec, fecha_asignado, fecha_desasignado)
     VALUES (p_id_tutor, p_id_aula, v_consec, p_fecha_asignado, NULL);
     
-    RAISE NOTICE 'Tutor % asignado al aula % exitosamente', p_id_tutor, p_id_aula;
+    RAISE NOTICE 'Tutor % asignado al aula % exitosamente (consec: %)', p_id_tutor, p_id_aula, v_consec;
 END;
 $$;
 
--- Procedure: Cambiar tutor de un aula (mantiene historial)
+-- Procedure: Desasignar tutor de un aula
+CREATE OR REPLACE PROCEDURE sp_desasignar_tutor_aula(
+    p_id_aula INT,
+    p_id_tutor INT,
+    p_fecha_desasignado DATE DEFAULT CURRENT_DATE
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_asignacion RECORD;
+BEGIN
+    -- Buscar la asignación activa
+    SELECT id_tutor, id_aula, consec, fecha_asignado
+    INTO v_asignacion
+    FROM tutor_aula
+    WHERE id_tutor = p_id_tutor 
+      AND id_aula = p_id_aula 
+      AND fecha_desasignado IS NULL
+    ORDER BY consec DESC
+    LIMIT 1;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No existe una asignación activa del tutor % al aula %', p_id_tutor, p_id_aula;
+    END IF;
+    
+    -- Validar que la fecha de desasignación sea posterior a la de asignación
+    IF p_fecha_desasignado < v_asignacion.fecha_asignado THEN
+        RAISE EXCEPTION 'La fecha de desasignación (%) no puede ser anterior a la fecha de asignación (%)',
+            p_fecha_desasignado, v_asignacion.fecha_asignado;
+    END IF;
+    
+    -- Desasignar el tutor
+    UPDATE tutor_aula
+    SET fecha_desasignado = p_fecha_desasignado
+    WHERE id_tutor = p_id_tutor 
+      AND id_aula = p_id_aula 
+      AND consec = v_asignacion.consec;
+    
+    RAISE NOTICE 'Tutor % desasignado del aula % (consec: %)', p_id_tutor, p_id_aula, v_asignacion.consec;
+END;
+$$;
+
+-- Procedure: Cambiar tutor de un aula (desasigna el actual y asigna uno nuevo)
 CREATE OR REPLACE PROCEDURE sp_cambiar_tutor_aula(
     p_id_aula INT,
     p_id_tutor_nuevo INT,
@@ -51,38 +98,31 @@ CREATE OR REPLACE PROCEDURE sp_cambiar_tutor_aula(
 LANGUAGE plpgsql AS $$
 DECLARE
     v_tutor_actual INT;
-    v_consec INT;
 BEGIN
+    -- Obtener el tutor actual
     v_tutor_actual := fn_obtener_tutor_actual_aula(p_id_aula);
     
     IF v_tutor_actual IS NULL THEN
-        RAISE EXCEPTION 'El aula % no tiene un tutor asignado actualmente', p_id_aula;
+        RAISE EXCEPTION 'El aula % no tiene un tutor asignado actualmente. Use sp_asignar_tutor_aula', p_id_aula;
     END IF;
     
-    IF NOT EXISTS (
-        SELECT 1 FROM personal p
-        INNER JOIN rol r ON p.id_rol = r.id
-        WHERE p.id = p_id_tutor_nuevo AND r.nombre IN ('TUTOR')
-    ) THEN
-        RAISE EXCEPTION 'El tutor con id % no existe o no tiene el rol adecuado', p_id_tutor_nuevo;
+    IF v_tutor_actual = p_id_tutor_nuevo THEN
+        RAISE EXCEPTION 'El tutor % ya está asignado al aula %', p_id_tutor_nuevo, p_id_aula;
     END IF;
     
-    UPDATE tutor_aula
-    SET fecha_desasignado = p_fecha_cambio
-    WHERE id_aula = p_id_aula 
-      AND id_tutor = v_tutor_actual 
-      AND fecha_desasignado IS NULL;
+    -- Desasignar el tutor actual
+    CALL sp_desasignar_tutor_aula(p_id_aula, v_tutor_actual, p_fecha_cambio);
     
-    SELECT COALESCE(MAX(consec), 0) + 1 INTO v_consec
-    FROM tutor_aula
-    WHERE id_aula = p_id_aula AND id_tutor = p_id_tutor_nuevo;
-    
-    INSERT INTO tutor_aula (id_tutor, id_aula, consec, fecha_asignado, fecha_desasignado)
-    VALUES (p_id_tutor_nuevo, p_id_aula, v_consec, p_fecha_cambio, NULL);
+    -- Asignar el nuevo tutor
+    CALL sp_asignar_tutor_aula(p_id_aula, p_id_tutor_nuevo, p_fecha_cambio);
     
     RAISE NOTICE 'Tutor cambiado de % a % para el aula %', v_tutor_actual, p_id_tutor_nuevo, p_id_aula;
 END;
 $$;
+
+-- =====================================================
+-- STORED PROCEDURES: GESTIÓN DE ASIGNACIONES DE ESTUDIANTES
+-- =====================================================
 
 -- Procedure: Asignar estudiante a un aula
 CREATE OR REPLACE PROCEDURE sp_asignar_estudiante_aula(

@@ -22,10 +22,11 @@ import { InstitucionEntity } from './entities/institucion.entity';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 
+@Auth()
 @ApiTags('Instituciones')
 @Controller('instituciones')
 export class InstitucionesController {
-  constructor(private readonly institucionesService: InstitucionesService) {}
+  constructor(private readonly institucionesService: InstitucionesService) { }
 
   @Post()
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
@@ -53,7 +54,7 @@ export class InstitucionesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener todas las instituciones',
-    description: 'Retorna lista de todas las IED. Endpoint público.',
+    description: 'Retorna lista de todas las IED. Accesible por todos los roles.',
   })
   @ApiResponse({
     status: 200,
@@ -68,7 +69,7 @@ export class InstitucionesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener una institución por ID',
-    description: 'Retorna información detallada de una IED. Endpoint público.',
+    description: 'Retorna información detallada de una IED. Accesible por todos los roles.',
   })
   @ApiParam({
     name: 'id',

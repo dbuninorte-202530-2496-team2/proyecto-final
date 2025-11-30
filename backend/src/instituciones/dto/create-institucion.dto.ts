@@ -12,7 +12,6 @@ import {
 export enum Jornada {
   MAÑANA = 'MAÑANA',
   TARDE = 'TARDE',
-  UNICA = 'UNICA',
   MIXTA = 'MIXTA',
 }
 
@@ -36,7 +35,7 @@ export class CreateInstitucionDto {
   })
   @IsEmail()
   @IsOptional()
-  correo?: string;
+  correo: string;
 
   @ApiProperty({
     description: 'Jornada(s) de la institución',
