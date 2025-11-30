@@ -11,7 +11,7 @@ import { CreateInstitucionDto, UpdateInstitucionDto } from './dto';
 
 @Injectable()
 export class InstitucionesService {
-  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) {}
+  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) { }
 
   async create(createInstitucionDto: CreateInstitucionDto) {
     const { nombre, correo, jornada, nombre_contacto, telefono_contacto } = createInstitucionDto;
@@ -21,7 +21,7 @@ export class InstitucionesService {
         `INSERT INTO institucion (nombre, correo, jornada, nombre_contacto, telefono_contacto) 
          VALUES ($1, $2, $3, $4, $5) 
          RETURNING id, nombre, correo, jornada, nombre_contacto, telefono_contacto`,
-        [nombre, correo || null, jornada, nombre_contacto || null, telefono_contacto || null],
+        [nombre, correo, jornada, nombre_contacto || null, telefono_contacto || null],
       );
 
       return result.rows[0];
@@ -105,7 +105,7 @@ export class InstitucionesService {
     console.error(error);
 
     if (error.code === '23505') {
-      throw new BadRequestException('Ya existe una institución con ese nombre');
+      throw new BadRequestException('Ya existe una institución con ese identificador');
     }
 
     if (error.code === '23503') {

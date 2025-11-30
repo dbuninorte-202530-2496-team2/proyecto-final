@@ -1,6 +1,6 @@
-import { 
-  Injectable, 
-  Inject, 
+import {
+  Injectable,
+  Inject,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
@@ -14,7 +14,7 @@ import { AulaHorarioSemanaEntity } from './entities/aula-horario-semana.entity';
 export class AulaHorarioSemanaService {
   constructor(
     @Inject(PG_CONNECTION) private readonly pool: Pool,
-  ) {}
+  ) { }
 
   async findHorariosByAula(id_aula: number): Promise<AulaHorarioSemanaEntity[]> {
     try {
@@ -29,6 +29,7 @@ export class AulaHorarioSemanaService {
           ahs.id_aula,
           ahs.id_horario,
           ahs.id_semana,
+          ahs.fecha_programada,
           h.dia_sem,
           h.hora_ini,
           h.hora_fin,
@@ -53,7 +54,7 @@ export class AulaHorarioSemanaService {
   }
 
   async asignarHorario(
-    id_aula: number, 
+    id_aula: number,
     asignarHorarioDto: AsignarHorarioAulaDto
   ): Promise<AulaHorarioSemanaEntity> {
     const { id_horario, id_semana } = asignarHorarioDto;
@@ -217,8 +218,8 @@ export class AulaHorarioSemanaService {
       `;
       await this.pool.query(deleteQuery, [id_aula, id_horario, id_semana]);
 
-      return { 
-        message: `Asignación del horario ${id_horario} al aula ${id_aula} en la semana ${id_semana} eliminada correctamente` 
+      return {
+        message: `Asignación del horario ${id_horario} al aula ${id_aula} en la semana ${id_semana} eliminada correctamente`
       };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {

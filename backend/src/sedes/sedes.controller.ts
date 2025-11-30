@@ -22,10 +22,11 @@ import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 import { SedeEntity } from './entitites/sede.entity';
 
+@Auth()
 @ApiTags('Sedes')
 @Controller()
 export class SedesController {
-  constructor(private readonly sedesService: SedesService) {}
+  constructor(private readonly sedesService: SedesService) { }
 
   @Post('sedes')
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
@@ -54,7 +55,7 @@ export class SedesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener todas las sedes',
-    description: 'Retorna lista de todas las sedes con información de su institución. Endpoint público.',
+    description: 'Retorna lista de todas las sedes con información de su institución. Accesible por todos los roles.',
   })
   @ApiResponse({
     status: 200,
@@ -69,7 +70,7 @@ export class SedesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener una sede por ID',
-    description: 'Retorna información detallada de una sede. Endpoint público.',
+    description: 'Retorna información detallada de una sede. Accesible por todos los roles.',
   })
   @ApiParam({
     name: 'id',
@@ -93,7 +94,7 @@ export class SedesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener sedes de una institución',
-    description: 'Retorna todas las sedes asociadas a una institución específica. Endpoint público.',
+    description: 'Retorna todas las sedes asociadas a una institución específica. Accesible por todos los roles.',
   })
   @ApiParam({
     name: 'id_inst',

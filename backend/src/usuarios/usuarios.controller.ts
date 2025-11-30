@@ -11,7 +11,10 @@ import {
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { Auth } from 'src/auth/decorators';
+import { ValidRoles } from 'src/auth/interfaces';
 
+@Auth(ValidRoles.ADMINISTRADOR)
 @Controller('usuarios')
 export class UsuariosController {
     constructor(private readonly usuariosService: UsuariosService) { }
@@ -26,6 +29,7 @@ export class UsuariosController {
         return this.usuariosService.findAll();
     }
 
+    @Auth() //Sobreescritura del decorator a nivel de controller: el tutor puede ver su propio usuario
     @Get(':usuario')
     findOne(@Param('usuario') usuario: string) {
         return this.usuariosService.findOne(usuario);

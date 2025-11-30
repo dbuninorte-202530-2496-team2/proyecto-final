@@ -20,6 +20,13 @@ export class AulaHorarioSemanaEntity {
   id_semana: number;
 
   @ApiProperty({
+    description: 'Snapshot de la primera fecha programada. Nos dice si la fecha derivada en el programa es distinta a la originalmente programada',
+    example: '2024-01-08',
+    required: false,
+  })
+  fecha_programada?: string;
+
+  @ApiProperty({
     description: 'Día de la semana del horario',
     example: 'LU',
     required: false,

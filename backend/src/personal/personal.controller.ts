@@ -12,7 +12,10 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PersonalService } from './personal.service';
 import { CreatePersonalDto } from './dto/create-personal.dto';
 import { UpdatePersonalDto } from './dto/update-personal.dto';
+import { Auth } from 'src/auth/decorators';
+import { ValidRoles } from 'src/auth/interfaces';
 
+@Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR) //No concierne al tutor ninguna operación sobre el resto del personal
 @ApiTags('Personal')
 @Controller('personal')
 export class PersonalController {

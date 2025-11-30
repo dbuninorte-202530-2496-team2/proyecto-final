@@ -15,7 +15,7 @@ export class SedesService {
   constructor(
     @Inject(PG_CONNECTION) private readonly pool: Pool,
     private readonly institucionesService: InstitucionesService,
-  ) {}
+  ) { }
 
   async create(createSedeDto: CreateSedeDto) {
     const { nombre, direccion, id_inst, is_principal } = createSedeDto;
@@ -141,7 +141,7 @@ export class SedesService {
     console.error(error);
 
     if (error.code === '23505') {
-      throw new BadRequestException('Ya existe una sede con ese nombre en la institución');
+      throw new BadRequestException('Ya existe una sede con este identificador');
     }
 
     if (error.code === '23503') {
