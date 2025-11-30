@@ -1,6 +1,8 @@
 FROM node:25.0.0-alpine3.21
+
 WORKDIR /app
-COPY package.json package-lock.json* .
+
+COPY package*.json ./
 RUN npm install
 COPY . .
 ENV CHOKIDAR_USEPOLLING=true

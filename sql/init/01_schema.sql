@@ -164,7 +164,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_set_fecha_programada;
+DROP TRIGGER IF EXISTS trg_set_fecha_programada on aula_horario_sem;
 CREATE TRIGGER trg_set_fecha_programada
 BEFORE INSERT OR UPDATE ON aula_horario_sem
 FOR EACH ROW
@@ -216,7 +216,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-drop trigger if exists trg_no_solape_clase;
+drop trigger if exists trg_no_solape_clase on aula_horario_sem;
 CREATE TRIGGER trg_no_solape_clase
 BEFORE INSERT OR UPDATE ON aula_horario_sem
 FOR EACH ROW
@@ -347,12 +347,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Aplicar a horario
+drop trigger if exists trg_horario_immutable on horario;
 CREATE TRIGGER trg_horario_immutable
 BEFORE UPDATE ON horario
 FOR EACH ROW
 EXECUTE FUNCTION block_updates();
 
 -- Aplicar a semana
+drop trigger if exists trg_semana_immutable on semana;
 CREATE TRIGGER trg_semana_immutable
 BEFORE UPDATE ON semana
 FOR EACH ROW
