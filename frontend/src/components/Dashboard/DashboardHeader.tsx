@@ -1,8 +1,8 @@
 import { LogOut, User, Shield, UserCog, Zap } from 'lucide-react';
-import {useAuth} from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export function DashboardHeader() {
-  const { usuario, rol, logout } = useAuth(); 
+  const { usuario, rol, logout } = useAuth();
   const getRoleIcon = () => {
     switch (rol) {
       case 'ADMINISTRADOR':
@@ -41,7 +41,7 @@ export function DashboardHeader() {
         </div>
         <p className="text-xs text-gray-500 ml-1">Plataforma integrada • Gestión centralizada • Acceso en tiempo real</p>
       </div>
-      
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 px-3 h-12 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg hover:from-green-100 hover:to-blue-100 transition-all shadow-sm">
           {getRoleIcon()}
@@ -60,7 +60,7 @@ export function DashboardHeader() {
         >
           <LogOut className="w-5 h-5" />
         </button>
-      </div>  
+      </div>
     </div>
   );
 }

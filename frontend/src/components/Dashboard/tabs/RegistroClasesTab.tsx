@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 
 import type { Personal } from '../../../types/personal';
 import type { Aula } from '../../../types/aula';
@@ -26,14 +27,17 @@ import {
   Search,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
 } from 'lucide-react';
+import type { AsistenciaTutor } from '../../../types/asistenciaTutor';
+import { Warning } from 'postcss';
 
 type TutorFilter = number | 'none';
 
 // Datos de prueba
 const mockTutores: Personal[] = [
   {
-    id: 2,
+    id: 1,
     nombres: 'Laura',
     apellidos: 'Rodríguez',
     correo: 'laura.rod@globalenglish.edu.co',
@@ -67,7 +71,7 @@ const mockHorarios: Horario[] = [
 ];
 
 const mockTutorAula: TutorAula[] = [
-  { id: 1, id_aula: 1, id_tutor: 2, fecha_asignado: '2025-02-01', fecha_desasignado: null },
+  { id: 1, id_aula: 1, id_tutor: 1, fecha_asignado: '2025-02-01', fecha_desasignado: null },
   { id: 2, id_aula: 3, id_tutor: 3, fecha_asignado: '2025-02-10', fecha_desasignado: null },
 ];
 
@@ -75,6 +79,26 @@ const mockAulaHorario: AulaHorario[] = [
   { id: 1, id_aula: 1, id_horario: 1 },
   { id: 2, id_aula: 1, id_horario: 2 },
   { id: 3, id_aula: 3, id_horario: 3 },
+];
+
+// Mock de asistencias del tutor
+const mockAsistenciasTutor: AsistenciaTutor[] = [
+  {
+    id: 1,
+    fecha: '2025-11-25',
+    id_horario: 1,
+    id_tutor: 1,
+    estado: 'DICTO_CLASE',
+    observaciones: 'Clase normal',
+  },
+  {
+    id: 2,
+    fecha: '2025-11-27',
+    id_horario: 2,
+    id_tutor: 1,
+    estado: 'NO_DICTO_CLASE',
+    motivo: 'Enfermedad',
+  },
 ];
 
 const mockEstudiantes: Estudiante[] = [
@@ -147,13 +171,56 @@ const RegistroClasesTab: React.FC = () => {
   const [estudiantes] = useState<Estudiante[]>(mockEstudiantes);
   const [motivos] = useState<Motivo[]>(mockMotivos);
   const [semanas] = useState<Semana[]>(mockSemanas);
+  const [asistenciasTutor] = useState<AsistenciaTutor[]>(mockAsistenciasTutor);
+
+  const { usuario, rol } = useAuth();
 
   // Estado de sesión
   const [tutorActivoId, setTutorActivoId] = useState<TutorFilter>('none');
+
+  // Efecto para inicializar el tutor activo
+  useEffect(() => {
+    if (rol === 'TUTOR' && usuario) {
+      // Si usuario es string (email o nombre)
+      if (typeof usuario === 'string') {
+        // 1. Intentar buscar por correo exacto
+        let tutorEncontrado = tutores.find(t => t.correo === usuario);
+
+        // 2. Si no encuentra, buscar por nombre o apellido (case insensitive)
+        if (!tutorEncontrado) {
+          const termino = usuario.toLowerCase();
+          tutorEncontrado = tutores.find(t =>
+            t.nombres.toLowerCase().includes(termino) ||
+            t.apellidos.toLowerCase().includes(termino) ||
+            `${t.nombres} ${t.apellidos}`.toLowerCase().includes(termino)
+          );
+        }
+
+        if (tutorEncontrado) {
+          setTutorActivoId(tutorEncontrado.id);
+        } else {
+          // Fallback para desarrollo: si es tutor pero no coincide, usar el primero (Laura)
+          // Esto asegura que el usuario vea datos
+          console.warn('No se encontró coincidencia exacta para el usuario, usando fallback ID 1');
+          setTutorActivoId(1);
+        }
+      }
+      // Si usuario fuera un objeto con id
+      else if ((usuario as any).id) {
+        setTutorActivoId((usuario as any).id);
+      }
+    }
+  }, [rol, usuario, tutores]);
+
   const [aulaIdSeleccionada, setAulaIdSeleccionada] = useState<number | 0>(0);
   const [horarioIdSeleccionado, setHorarioIdSeleccionado] = useState<number | 0>(0);
   const [fecha, setFecha] = useState<string>('');
   const [searchEst, setSearchEst] = useState('');
+
+  // Estado de reposición / no clase
+  const [huboClase, setHuboClase] = useState<boolean>(true);
+  const [motivoNoClase, setMotivoNoClase] = useState<string>('');
+  const [fechaReposicion, setFechaReposicion] = useState<string>('');
 
   // Estado de asistencia
   const [asistenciaState, setAsistenciaState] = useState<{
@@ -230,9 +297,25 @@ const RegistroClasesTab: React.FC = () => {
     return { presentes, ausentes, porcentaje };
   }, [estudiantesDelAula, asistenciaState]);
 
+  // Validación de asistencia del tutor
+  const tutorDictoClase = useMemo(() => {
+    if (!fecha || !horarioIdSeleccionado || tutorActivoId === 'none') return null;
+
+    const asistencia = asistenciasTutor.find(
+      a => a.fecha === fecha &&
+        a.id_horario === horarioIdSeleccionado &&
+        a.id_tutor === tutorActivoId
+    );
+
+    return asistencia?.estado === 'DICTO_CLASE' ? true : (asistencia ? false : null);
+  }, [fecha, horarioIdSeleccionado, tutorActivoId, asistenciasTutor]);
+
   // Handlers
   const resetSesion = () => {
     setAsistenciaState({});
+    setHuboClase(true);
+    setMotivoNoClase('');
+    setFechaReposicion('');
     setSaveError(null);
   };
 
@@ -289,8 +372,13 @@ const RegistroClasesTab: React.FC = () => {
       return;
     }
 
-    if (estudiantesDelAula.length === 0) {
+    if (huboClase && estudiantesDelAula.length === 0) {
       setSaveError('No hay estudiantes en el aula seleccionada.');
+      return;
+    }
+
+    if (!huboClase && !motivoNoClase) {
+      setSaveError('Debes seleccionar un motivo si no hubo clase.');
       return;
     }
 
@@ -299,19 +387,29 @@ const RegistroClasesTab: React.FC = () => {
 
     const semana = semanaActual ?? semanas[0];
 
-    const nuevos: AsistenciaEstudiante[] = estudiantesDelAula.map((e) => {
-      const estado = asistenciaState[e.id] ?? { asistio: true, id_motivo: null };
-      return {
-        id: registros.length + Math.floor(Math.random() * 10000),
-        fecha_real: fecha,
-        asistio: estado.asistio,
-        id_estudiante: e.id,
-        id_aula: aulaSeleccionada.id,
-        id_tutor: tutorActivo.id,
-        id_horario: horarioSeleccionado.id,
-        id_semana: semana?.id ?? 1,
-        id_motivo: estado.id_motivo ?? null,
-      };
+    const nuevos: AsistenciaEstudiante[] = huboClase
+      ? estudiantesDelAula.map((e) => {
+        const estado = asistenciaState[e.id] ?? { asistio: true, id_motivo: null };
+        return {
+          id: registros.length + Math.floor(Math.random() * 10000),
+          fecha_real: fecha,
+          asistio: estado.asistio,
+          id_estudiante: e.id,
+          id_aula: aulaSeleccionada.id,
+          id_tutor: tutorActivo.id,
+          id_horario: horarioSeleccionado.id,
+          id_semana: semana?.id ?? 1,
+          id_motivo: estado.id_motivo ?? null,
+        };
+      })
+      : []; // Si no hubo clase, no se generan registros de asistencia individual (o se maneja diferente en backend)
+
+    // Aquí podrías agregar lógica para enviar el reporte de "No hubo clase" al backend
+    console.log('Reporte:', {
+      huboClase,
+      motivoNoClase,
+      fechaReposicion,
+      registros: nuevos,
     });
 
     // Simular guardado
@@ -334,6 +432,8 @@ const RegistroClasesTab: React.FC = () => {
             </CardTitle>
             <CardDescription>
               Administrativo: selecciona tutor, aula, horario y fecha para registrar asistencia
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+              <p className="text-red-600">Solo se podra tomar asistencia si el tutor dicto la clase</p>
             </CardDescription>
           </div>
         </div>
@@ -350,7 +450,9 @@ const RegistroClasesTab: React.FC = () => {
               <select
                 value={tutorActivoId === 'none' ? 'none' : tutorActivoId}
                 onChange={(e) => handleChangeTutor(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium transition-all hover:border-green-300"
+                disabled={rol === 'TUTOR'}
+                className={`w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium transition-all hover:border-green-300 ${rol === 'TUTOR' ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
               >
                 <option value="none">Selecciona un tutor</option>
                 {tutores.map((t) => (
@@ -432,22 +534,61 @@ const RegistroClasesTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Formulario de asistencia */}
-        <RegistroClasesForm
-          fecha={fecha}
-          semana={semanaActual}
-          tutor={tutorActivo}
-          aula={aulaSeleccionada}
-          horario={horarioSeleccionado}
-          estudiantes={estudiantesDelAula}
-          motivos={motivos}
-          asistencia={asistenciaState}
-          isSaving={isSaving}
-          error={saveError}
-          onToggleAsistencia={handleToggleAsistencia}
-          onChangeMotivo={handleChangeMotivo}
-          onSubmit={handleSubmit}
-        />
+        {/* Validación de asistencia del tutor */}
+        {fecha && horarioIdSeleccionado && tutorDictoClase !== null && (
+          tutorDictoClase === false ? (
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 flex items-start gap-3 animate-fadeIn">
+              <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-red-900 mb-1">
+                  ⚠️ No se puede tomar asistencia de estudiantes
+                </h4>
+                <p className="text-sm text-red-700">
+                  El tutor marcó que <strong>NO dictó clase</strong> en esta fecha y horario.
+                  Debe registrar primero que dictó clase en la pestaña "Asistencia Tutor".
+                </p>
+              </div>
+            </div>
+          ) : tutorDictoClase === null ? (
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 flex items-start gap-3 animate-fadeIn">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-yellow-900 mb-1">
+                  ⚠️ Falta registro de asistencia del tutor
+                </h4>
+                <p className="text-sm text-yellow-700">
+                  El tutor aún no ha registrado su asistencia para esta fecha y horario.
+                  Debe ir a "Asistencia Tutor" y marcar si dictó clase.
+                </p>
+              </div>
+            </div>
+          ) : null
+        )}
+
+        {/* Formulario de asistencia - Solo visible si tutor dictó clase */}
+        {tutorDictoClase === true && (
+          <RegistroClasesForm
+            fecha={fecha}
+            semana={semanaActual}
+            tutor={tutorActivo}
+            aula={aulaSeleccionada}
+            horario={horarioSeleccionado}
+            estudiantes={estudiantesDelAula}
+            motivos={motivos}
+            asistencia={asistenciaState}
+            isSaving={isSaving}
+            error={saveError}
+            onToggleAsistencia={handleToggleAsistencia}
+            onChangeMotivo={handleChangeMotivo}
+            huboClase={huboClase}
+            motivoNoClase={motivoNoClase}
+            fechaReposicion={fechaReposicion}
+            setHuboClase={setHuboClase}
+            setMotivoNoClase={setMotivoNoClase}
+            setFechaReposicion={setFechaReposicion}
+            onSubmit={handleSubmit}
+          />
+        )}
 
         {/* Estadísticas */}
         {estudiantesDelAula.length > 0 && (

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import type { Personal } from '../../../types/personal';
 import type { Aula } from '../../../types/aula';
 import type { Estudiante } from '../../../types/estudiante';
@@ -29,7 +30,7 @@ type ProgramaFilter = 'all' | 'INSIDECLASSROOM' | 'OUTSIDECLASSROOM';
 // Datos de prueba
 const mockTutores: Personal[] = [
   {
-    id: 2,
+    id: 1,
     nombres: 'Laura',
     apellidos: 'Rodríguez',
     correo: 'laura.rod@globalenglish.edu.co',
@@ -57,7 +58,7 @@ const mockAulas: Aula[] = [
 ];
 
 const mockTutorAula: TutorAula[] = [
-  { id: 1, id_aula: 1, id_tutor: 2, fecha_asignado: '2025-02-01', fecha_desasignado: null },
+  { id: 1, id_aula: 1, id_tutor: 1, fecha_asignado: '2025-02-01', fecha_desasignado: null },
   { id: 2, id_aula: 3, id_tutor: 3, fecha_asignado: '2025-02-10', fecha_desasignado: null },
 ];
 
@@ -132,7 +133,37 @@ const NotasTab: React.FC = () => {
   const [estudiantes] = useState<Estudiante[]>(mockEstudiantes);
   const [componentes] = useState<Componente[]>(mockComponentes);
 
+  const { usuario, rol } = useAuth();
+
   const [tutorActivoId, setTutorActivoId] = useState<TutorFilter>('none');
+
+  // Efecto para inicializar el tutor activo
+  useEffect(() => {
+    if (rol === 'TUTOR' && usuario) {
+      if (typeof usuario === 'string') {
+        let tutorEncontrado = tutores.find(t => t.correo === usuario);
+
+        if (!tutorEncontrado) {
+          const termino = usuario.toLowerCase();
+          tutorEncontrado = tutores.find(t =>
+            t.nombres.toLowerCase().includes(termino) ||
+            t.apellidos.toLowerCase().includes(termino) ||
+            `${t.nombres} ${t.apellidos}`.toLowerCase().includes(termino)
+          );
+        }
+
+        if (tutorEncontrado) {
+          setTutorActivoId(tutorEncontrado.id);
+        } else {
+          console.warn('No se encontró coincidencia exacta para el usuario en NotasTab, usando fallback ID 1');
+          setTutorActivoId(1);
+        }
+      }
+      else if ((usuario as any).id) {
+        setTutorActivoId((usuario as any).id);
+      }
+    }
+  }, [rol, usuario, tutores]);
   const [aulaIdSeleccionada, setAulaIdSeleccionada] = useState<number | 0>(0);
   const [programaFilter, setProgramaFilter] = useState<ProgramaFilter>('all');
   const [componenteIdSeleccionado, setComponenteIdSeleccionado] = useState<number | 0>(0);
