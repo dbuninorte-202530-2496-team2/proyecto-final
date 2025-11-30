@@ -4,6 +4,11 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { SeedModule } from './seed/seed.module';
 import { RolesModule } from './roles/roles.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { PersonalModule } from './personal/personal.module';
+import { HorarioModule } from './horario/horario.module';
+import { MotivoModule } from './motivo/motivo.module';
+import { FestivoModule } from './festivo/festivo.module';
 import { InstitucionesModule } from './instituciones/instituciones.module';
 import { SedesModule } from './sedes/sedes.module';
 import { AulasModule } from './aulas/aulas.module';
@@ -24,9 +29,9 @@ import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia
     DatabaseModule,
 
     SeedModule,
-    
+
     AuthModule,
-    
+
     RolesModule,
     
     InstitucionesModule,
@@ -47,7 +52,17 @@ import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia
     
     AsistenciaEstudiantesModule,
 
+    UsuariosModule,
+
+    PersonalModule,
+
+    HorarioModule,
+
+    MotivoModule,
+
+    FestivoModule,
+
     AsistenciaTutorModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
