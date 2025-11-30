@@ -1,56 +1,91 @@
--- =====================================================
--- STORED PROCEDURES: GESTIÓN DE CALENDARIO v2.0
--- =====================================================
 
+-- PROCEDURES PARA PERIODOS Y SEMANAS
+
+--============================
+--    PERIODOS Y SEMANAS
+--============================
 -- Procedure: Crear calendario de semanas para un periodo
 CREATE OR REPLACE PROCEDURE sp_crear_calendario_semanas(
     p_id_periodo INT,
     p_fecha_inicio DATE,
-    p_fecha_fin DATE
+    p_cantidad_semanas INT
 )
 LANGUAGE plpgsql AS $$
 DECLARE
     v_fecha_actual DATE;
-    v_fecha_fin_semana DATE;
     v_contador INT := 0;
+    v_dow INT; --Day Of Week
 BEGIN
+    -- Validaciones
     IF NOT EXISTS (SELECT 1 FROM periodo WHERE id = p_id_periodo) THEN
         RAISE EXCEPTION 'El periodo % no existe', p_id_periodo;
     END IF;
     
-    IF p_fecha_inicio >= p_fecha_fin THEN
-        RAISE EXCEPTION 'La fecha de inicio debe ser anterior a la fecha fin';
+    IF p_cantidad_semanas <= 0 OR p_cantidad_semanas > 53 THEN
+        RAISE EXCEPTION 'La cantidad debe estar entre 1 y 53';
     END IF;
     
     IF EXISTS (SELECT 1 FROM semana WHERE id_periodo = p_id_periodo) THEN
-        RAISE EXCEPTION 'Ya existen semanas creadas para el periodo %. Elimínelas primero si desea recrear el calendario', p_id_periodo;
+        RAISE EXCEPTION 'Ya existen semanas para el periodo %', p_id_periodo;
     END IF;
     
+    -- AJUSTAR AL LUNES MÁS CERCANO 
     v_fecha_actual := p_fecha_inicio;
-    v_fecha_actual := v_fecha_actual - EXTRACT(DOW FROM v_fecha_actual)::INT + 1;
-    IF EXTRACT(DOW FROM v_fecha_actual) = 0 THEN
-        v_fecha_actual := v_fecha_actual + 1;
+    v_dow := EXTRACT(DOW FROM v_fecha_actual)::INT;
+    
+    IF v_dow = 0 THEN  -- Domingo
+        v_fecha_actual := v_fecha_actual + INTERVAL '1 day';
+    ELSIF v_dow > 1 THEN  -- Martes-Sábado
+        v_fecha_actual := v_fecha_actual - (v_dow - 1) * INTERVAL '1 day';
     END IF;
     
-    WHILE v_fecha_actual < p_fecha_fin LOOP
-        v_fecha_fin_semana := v_fecha_actual + INTERVAL '6 days';
-        
-        IF v_fecha_fin_semana > p_fecha_fin THEN
-            v_fecha_fin_semana := p_fecha_fin;
-        END IF;
-        
-        INSERT INTO semana (fec_ini, fec_fin, id_periodo)
-        VALUES (v_fecha_actual, v_fecha_fin_semana, p_id_periodo);
+    -- Crear semanas
+    FOR i IN 1..p_cantidad_semanas LOOP
+        INSERT INTO semana (fec_ini, numero_semana, id_periodo)
+        VALUES (v_fecha_actual, i, p_id_periodo);
         
         v_contador := v_contador + 1;
-        v_fecha_actual := v_fecha_fin_semana + INTERVAL '1 day';
+        v_fecha_actual := v_fecha_actual + INTERVAL '7 days';
     END LOOP;
     
-    RAISE NOTICE 'Se crearon % semanas para el periodo % (% a %)', 
-        v_contador, p_id_periodo, p_fecha_inicio, p_fecha_fin;
+    RAISE NOTICE 'Se crearon % semanas para el periodo %', v_contador, p_id_periodo;
 END;
 $$;
 
+-- Función: Obtener información sobre las semanas en un periodo
+CREATE OR REPLACE FUNCTION fn_info_calendario_periodo(
+    p_id_periodo INT
+)
+RETURNS TABLE (
+    total_semanas INT,
+    primera_semana_inicio DATE,
+    primera_semana_fin DATE,
+    ultima_semana_inicio DATE,
+    ultima_semana_fin DATE,
+    duracion_dias INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(*)::INT as total_semanas,
+        MIN(fec_ini) as primera_semana_inicio,
+        (SELECT fec_fin FROM semana WHERE id_periodo = p_id_periodo ORDER BY fec_ini LIMIT 1) as primera_semana_fin,
+        MAX(fec_ini) as ultima_semana_inicio,
+        (SELECT fec_fin FROM semana WHERE id_periodo = p_id_periodo ORDER BY fec_ini DESC LIMIT 1) as ultima_semana_fin,
+        ((SELECT fec_fin FROM semana WHERE id_periodo = p_id_periodo ORDER BY fec_ini DESC LIMIT 1) - 
+         MIN(fec_ini) + 1)::INT as duracion_dias
+    FROM semana
+    WHERE id_periodo = p_id_periodo;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+
+
+
+
+--============================
+--          FESTIVOS
+--============================
 -- Procedure: Registrar festivo
 CREATE OR REPLACE PROCEDURE sp_registrar_festivo(
     p_fecha DATE,
@@ -93,35 +128,6 @@ BEGIN
 END;
 $$;
 
--- Procedure: Eliminar semanas de un periodo
-CREATE OR REPLACE PROCEDURE sp_eliminar_semanas_periodo(
-    p_id_periodo INT,
-    p_confirmar BOOLEAN DEFAULT FALSE
-)
-LANGUAGE plpgsql AS $$
-DECLARE
-    v_cantidad_semanas INT;
-BEGIN
-    IF NOT p_confirmar THEN
-        RAISE EXCEPTION 'Debe confirmar la eliminación estableciendo p_confirmar = TRUE';
-    END IF;
-    
-    SELECT COUNT(*) INTO v_cantidad_semanas
-    FROM semana
-    WHERE id_periodo = p_id_periodo;
-    
-    IF v_cantidad_semanas = 0 THEN
-        RAISE NOTICE 'No hay semanas para eliminar en el periodo %', p_id_periodo;
-        RETURN;
-    END IF;
-    
-    DELETE FROM semana
-    WHERE id_periodo = p_id_periodo;
-    
-    RAISE NOTICE '% semanas eliminadas del periodo %', v_cantidad_semanas, p_id_periodo;
-END;
-$$;
-
 -- Función: Obtener días hábiles entre dos fechas
 CREATE OR REPLACE FUNCTION fn_dias_habiles_entre_fechas(
     p_fecha_inicio DATE,
@@ -146,17 +152,3 @@ BEGIN
     RETURN v_contador;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
--- Vista: Resumen de semanas por periodo
-CREATE OR REPLACE VIEW v_semanas_periodo AS
-SELECT 
-    p.id as id_periodo,
-    p.anho,
-    s.id as id_semana,
-    s.fec_ini,
-    s.fec_fin,
-    s.fec_fin - s.fec_ini + 1 as dias_semana,
-    fn_dias_habiles_entre_fechas(s.fec_ini, s.fec_fin) as dias_habiles
-FROM periodo p
-INNER JOIN semana s ON s.id_periodo = p.id
-ORDER BY p.anho, s.fec_ini;

@@ -1,7 +1,5 @@
 -- =====================================================
--- LIMPIEZA COMPLETA
--- TRUNCATE ... RESTART IDENTITY
--- Eliminación, reinicio de sequences, evita errores de FK
+-- Eliminación, reinicio de sequences.
 -- =====================================================
 TRUNCATE 
     nota,
@@ -57,13 +55,13 @@ INSERT INTO motivo (descripcion) VALUES
 ('Permiso personal'),
 ('Capacitación'),
 ('Incapacidad médica'),
-('Festivo (día no laborable)'),
+('Festivo'),
 ('Fuerza mayor'),
 ('Problema de transporte'),
 ('Actividad institucional'),
 ('Otro');
 
--- Festivos 2025
+-- Festivos
 INSERT INTO festivo (fecha, descripcion) VALUES
 ('2025-01-01', 'Año Nuevo'),
 ('2025-01-06', 'Día de los Reyes Magos'),
@@ -80,7 +78,7 @@ INSERT INTO festivo (fecha, descripcion) VALUES
 -- =====================================================
 
 -- Administrador
---PARA LAS CONTRASEÑAS se usan hashes bcrypt pregenerados (12 rounds)
+--PARA LAS CONTRASEÑAS se usan hashes bcrypt pregenerados
 
 --contrasena=admin123
 INSERT INTO usuario (usuario, contrasena) VALUES ('administrador', '$2a$12$2vbDZEerwi6JxAng2g7efuBeIrkwgICYN2pGzOzX2GoK1xq.uEG/y');
@@ -101,15 +99,15 @@ INSERT INTO personal (codigo, nombre, apellido, correo, telefono, id_rol, usuari
 -- INSTITUCIÓN Y SEDES
 -- =====================================================
 
-INSERT INTO institucion (id, nombre, correo, jornada, nombre_contacto, telefono_contacto) VALUES
-(1, 'Institución Educativa San José', 'contacto@sanjose.edu.co', 'ÚNICA', 'Rector Principal', '3151234567');
+INSERT INTO institucion (nombre, correo, jornada, nombre_contacto, telefono_contacto) VALUES
+('Institución Educativa San José', 'contacto@sanjose.edu.co', 'ÚNICA', 'Rector Principal', '3151234567');
 
 INSERT INTO sede (id, nombre, direccion, id_inst, is_principal) VALUES
 (1, 'Sede Principal', 'Calle 5 # 10-20, Cali', 1, TRUE),
 (2, 'Sede Norte', 'Carrera 15 # 25-30, Cali', 1, FALSE);
 
 -- =====================================================
--- AULAS - Demostración de grados permitidos
+-- AULAS
 -- =====================================================
 
 -- INSIDECLASSROOM (4º y 5º)
@@ -123,42 +121,42 @@ INSERT INTO aula (id, grado, grupo, id_sede) VALUES
 (4, 10, 1, 2); -- 10º grado, grupo 1, sede norte
 
 -- =====================================================
--- HORARIOS - Diferentes configuraciones
+-- HORARIOS
 -- =====================================================
 
 -- Horarios para INSIDECLASSROOM (dentro de jornada escolar)
 INSERT INTO horario (id, dia_sem, hora_ini, hora_fin) VALUES
-(1, 'LU', '08:00', '09:00'),  -- Lunes 8-9am
-(2, 'MI', '10:00', '11:00'),  -- Miércoles 10-11am
-(3, 'VI', '14:00', '15:00');  -- Viernes 2-3pm
+(1, 'MA', '08:00', '09:00'),
+(2, 'MI', '10:00', '10:50'),
+(3, 'VI', '14:00', '15:00');
 
 -- Horarios para OUTSIDECLASSROOM (fuera de jornada)
 INSERT INTO horario (id, dia_sem, hora_ini, hora_fin) VALUES
-(4, 'MA', '16:00', '18:00'),  -- Martes 4-6pm (2 horas)
-(5, 'JU', '16:00', '18:00'),  -- Jueves 4-6pm
-(6, 'SA', '09:00', '12:00');  -- Sábado 9-12pm (3 horas)
+(4, 'MA', '18:00', '18:40'),
+(5, 'JU', '18:00', '19:00'),
+(6, 'SA', '09:00', '9:55');
 
 -- =====================================================
 -- PERIODO Y SEMANAS
 -- =====================================================
 
-INSERT INTO periodo (anho) VALUES (2025);
--- El periodo genera id=1
+INSERT INTO periodo (anho, numero) VALUES (2025, 1);
 
 -- Semanas del periodo (fec_fin se calcula automáticamente)
+-- fec_ini debe ser lunes
 INSERT INTO semana (fec_ini, id_periodo) VALUES
-('2025-01-06', 1),  -- Semana 1: ene 6-12
-('2025-01-13', 1),  -- Semana 2: ene 13-19
-('2025-01-20', 1),  -- Semana 3: ene 20-26
-('2025-01-27', 1);  -- Semana 4: ene 27 - feb 2
+('2025-01-06', 1),
+('2025-01-13', 1),
+('2025-01-20', 1),
+('2025-01-27', 1); 
 
 -- =====================================================
 -- ASIGNACIÓN DE HORARIOS A AULAS (por semana)
 -- =====================================================
 
--- Aula 1 (4º grado): Lunes y Miércoles, semanas 1-4
+-- Aula 1 (4º grado): Martes y Miércoles, semanas 1-4
 INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana) VALUES
-(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 1, 4),  -- Lunes
+(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 1, 4),  -- Martes
 (1, 2, 1), (1, 2, 2), (1, 2, 3), (1, 2, 4);  -- Miércoles
 
 -- Aula 3 (9º grado): Martes y Jueves, semanas 1-4
@@ -234,14 +232,20 @@ INSERT INTO componente (nombre, tipo_programa, porcentaje, id_periodo) VALUES
 -- ASISTENCIAS DE TUTORES - Casos de uso
 -- =====================================================
 
--- CASO 1: Clase normal dictada (lunes 6 ene)
+-- CASO 1: Clase martes 7 de enero (4to grado)
 INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion) VALUES
-('2025-01-06', TRUE, 1, 1, 1, 1, NULL, NULL);
+('2025-01-07', TRUE, 1, 1, 1, 1, NULL, NULL);
 
--- CASO 2: Clase cancelada por festivo con reposición (lunes 6 ene reyes)
--- Nota: El 6 de enero ES festivo pero lo dejamos para demostrar
+-- CASO 2: Clase cancelada martes 7 con reposición 
 INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion) VALUES
-('2025-01-06', FALSE, 2, 3, 4, 1, 6, '2025-01-09');
+('2025-01-07', FALSE, 2, 3, 4, 1, 1, '2025-01-11');
+-- Programamos la reposicion el sabado de la misma semana
+-- (En la App este es un evento ligado a la fecha de reposición)
+INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana) VALUES
+(3, 6, 1);
+-- Aquí el tutor registra que asiste
+INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion) VALUES
+('2025-01-11', TRUE, 2, 3, 6, 1, NULL, NULL);
 
 -- CASO 3: Clase cancelada por enfermedad SIN reposición todavía
 INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion) VALUES
@@ -249,35 +253,34 @@ INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario
 
 -- CASO 4: Clases normales semana 2
 INSERT INTO asistenciaTut (fecha_real, dictoClase, id_tutor, id_aula, id_horario, id_semana, id_motivo, fecha_reposicion) VALUES
-('2025-01-13', TRUE, 1, 1, 1, 2, NULL, NULL),
+('2025-01-14', TRUE, 1, 1, 1, 2, NULL, NULL),
 ('2025-01-15', TRUE, 1, 1, 2, 2, NULL, NULL);
 
 -- =====================================================
 -- ASISTENCIAS DE ESTUDIANTES
 -- =====================================================
 
--- Asistencias para la clase del lunes 6 ene (aula 1, 4º grado)
+-- Asistencias martes 7 4to grado
 INSERT INTO asistenciaEst (fecha_real, presente, id_estudiante, id_aula, id_horario, id_semana) VALUES
-('2025-01-06', TRUE, 1, 1, 1, 1),   -- Juan presente
-('2025-01-06', TRUE, 2, 1, 1, 1),   -- Ana presente
-('2025-01-06', FALSE, 3, 1, 1, 1),  -- Luis ausente
-('2025-01-06', TRUE, 4, 1, 1, 1);   -- Sofia presente
+('2025-01-07', TRUE, 1, 1, 1, 1),
+('2025-01-07', TRUE, 2, 1, 1, 1),
+('2025-01-07', TRUE, 3, 1, 1, 1),
+('2025-01-07', TRUE, 4, 1, 1, 1);
 
--- Asistencias para la REPOSICIÓN del 9 ene (aula 3, 9º grado)
+-- Asistencias para la clase de reposición del 11 ene (aula 3, 9º grado)
 INSERT INTO asistenciaEst (fecha_real, presente, id_estudiante, id_aula, id_horario, id_semana) VALUES
-('2025-01-09', TRUE, 5, 3, 4, 1),   -- Pedro presente en reposición
-('2025-01-09', FALSE, 6, 3, 4, 1),  -- Laura ausente
-('2025-01-09', TRUE, 7, 3, 4, 1);   -- Diego presente
+('2025-01-11', TRUE, 5, 3, 6, 1),   -- Pedro presente en reposición
+('2025-01-11', FALSE, 6, 3, 6, 1),  -- Laura ausente
+('2025-01-11', TRUE, 7, 3, 6, 1);   -- Diego presente
 
--- Asistencias semana 2
 INSERT INTO asistenciaEst (fecha_real, presente, id_estudiante, id_aula, id_horario, id_semana) VALUES
-('2025-01-13', TRUE, 1, 1, 1, 2),
-('2025-01-13', TRUE, 2, 1, 1, 2),
-('2025-01-13', TRUE, 3, 1, 1, 2),
-('2025-01-13', FALSE, 4, 1, 1, 2);
+('2025-01-14', TRUE, 1, 1, 1, 2),
+('2025-01-14', TRUE, 2, 1, 1, 2),
+('2025-01-14', TRUE, 3, 1, 1, 2),
+('2025-01-14', FALSE, 4, 1, 1, 2);
 
 -- =====================================================
--- NOTAS - Demostración de cálculo de definitiva
+-- NOTAS
 -- =====================================================
 
 -- Notas para Juan (estudiante 1, 4º grado - componentes 1-4)
@@ -304,12 +307,12 @@ INSERT INTO nota (valor, comentario, id_tutor, id_comp, id_estudiante) VALUES
 (3.2, NULL, 2, 8, 5);
 -- Definitiva Pedro: (3.5*20 + 3.8*20 + 2.9*30 + 3.2*30)/100 = 3.29
 
+
 -- =====================================================
 -- CASO DE USO: Cambio de tutor (historial)
 -- =====================================================
 
--- Supongamos que María renuncia y entra un nuevo tutor
--- Primero cerraríamos su asignación (con sp_cambiar_tutor_aula):
+-- María renuncia y entra un nuevo tutor
 -- UPDATE tutor_aula SET fecha_desasignado = '2025-02-01' WHERE id_tutor = 1 AND id_aula = 1;
 -- INSERT INTO tutor_aula VALUES (3, 1, 1, '2025-02-01', NULL);  -- nuevo tutor
 
@@ -317,7 +320,6 @@ INSERT INTO nota (valor, comentario, id_tutor, id_comp, id_estudiante) VALUES
 -- CASO DE USO: Estudiante cambia de aula
 -- =====================================================
 
--- Luis (estudiante 3) se mueve de 4º a 5º (ambos permitidos: primaria)
--- Esto lo harías con sp_mover_estudiante_aula:
+-- Luis (estudiante 3) se mueve de 4º a 5º
 -- UPDATE estudiante_aula SET fecha_desasignado = '2025-02-01' WHERE id_estudiante = 3 AND id_aula = 1;
 -- INSERT INTO estudiante_aula VALUES (3, 2, 1, '2025-02-01', NULL);

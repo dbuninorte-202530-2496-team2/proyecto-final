@@ -24,6 +24,7 @@ import { UpdatePersonalDto } from './dto/update-personal.dto';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 
+@Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR) //No concierne al tutor ninguna operación sobre el resto del personal
 @ApiTags('Personal')
 @Controller('personal')
 export class PersonalController {

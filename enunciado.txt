@@ -1,0 +1,69 @@
+La secretaría de educación de un distrito municipio en vías de desarrollo, alineada con el proyecto
+educativo y una visión de un futuro turístico de la ciudad lo que requiere personas bilingües con
+énfasis en el inglés, ha conseguido el patrocinio financiero de una organización internacional que se
+alinea con este tipo de programas. Por lo tanto, ha decidido contratarlos para que desarrollen un
+sistema de información que apoye la gestión operativa del programa.
+El programa consiste en invitar a las Instituciones Educativas del Distrito Municipal llamadas IED
+para que ofrezcan Aulas de 4º, 5º, 9º y 10º grado de educación básica primaria y secundaria
+respectivamente las cuales recibirán el entrenamiento en el inglés, beneficiando a los estudiantes
+de esos grados. Las Instituciones para los grados 4º y 5º ofrecerán sus Aulas dentro del horario
+normal de la institución debido a la edad de los estudiantes, pero los grados 9º y 10º ofrecerán sus
+Aulas por fuera del horario normal de la institución.
+El programa en general se llama GLOBALENGLISH. Para 4º y 5º se llamará INSIDECLASSROOM y el
+de 9º y 10º se llamará OUTSIDECLASSROOM. Esta clasificación es importante para los indicadores
+de gestión de éxito del programa, pues se quiere saber cuál estrategia es más efectiva.
+El horario será de lunes a viernes entre las 06:00 y 18:00 (horario militar) para los grados 4º y 5º
+ajustado a la jornada del colegio de 1 a 2 horas y para los grados 9º y 10º será de lunes a sábado en
+jornada contraria de 1 a 3 horas. La jornada de las instituciones pueden ser ÚNICA en la MAÑANA o
+en la TARDE, o mixta MAÑANA y TARDE.
+Las instituciones pueden tener varias sedes, por lo que se debe identifica en cada Aula si está en la
+sede principal o en una de las sedes. Esto es importante por que la dirección de cada sede difiere de
+la sede principal.
+Para facilitar los informes de gestión del proyecto los horarios se van a llevar en un equivalente a 1
+hora, pero el sistema de información debe soportar que existan horarios de 40, 45, 50, 55 y 60
+minutos como equivalente a 1 hora.
+El horario ofertado por la institución de un Aula puede ser continuo o separado por espacios de
+tiempo en la misma jornada (por ejemplo: un recreo/descanso o por decisión de la institución) o en
+días de la semana (por ejemplo: un curso de 4º que tiene dos horas puede ser lunes de 06:00 a 06:40
+y miércoles de 10:00 a 10:40 porque su jornada es en la MAÑANA, 2 horas de 40 minutos).
+Desde el lado administrativo del programa se contratan personas con dos roles o perfiles:
+ADMINISTRATIVO y TUTOR. La persona contratada sólo puede tener un solo rol o perfil y podrán
+realizar tareas en el sistema con la asignación de un usuario y contraseña. El rol de TUTOR tendrá
+las funciones de tomar asistencia e ingresar notas para los estudiantes de las Aulas que tiene
+asignada. Ver su horario de clase asignado. Autogestionarse con un reporte de asistencia y de notas
+ingresadas por semana o en un rango de fechas. Ingresar la fecha en que hizo reposición de una
+clase que no dicto ya sea porque era festivo o porque hubo un motivo personal o de fuerza mayor.
+El rol de ADMINISTRATIVO podrá hacer lo mismo que el TUTOR, pero debe solicitar primero sobre
+que TUTOR va a actuar. Adicional, puede contratar personas, asignarlas al Tutor, Invitar instituciones
+al programa, ingresar las sedes de la institución si las tiene, ingresar las Aulas ofertadas por la
+institución, crear horarios, asignar horarios al Aula, asignar tutor al Aula, ingresar los festivos, crear
+motivos de no asistencia a clase, ingresar periodo y componentes de notas por tipo de programa,
+ingresar los tipos de documentos. Ingresar los estudiantes y colocarlos en las Aulas de la institución
+que les corresponde. Mover estudiantes de un aula a otra. Verificar la asistencia del Tutor. Ingresar
+el score de entrada y salida de cada estudiante.
+Debe existir un rol especial ADMINISTRADOR que debe estar asignado a una persona contratada
+con perfil técnico y podrá hacer lo que hace un rol ADMINISTRATIVO. Adicional, crear el calendario
+de las semanas del programa (1 sola vez), gestionar los roles o perfiles, los menús y los usuarios del
+sistema, asignar la persona al usuario y enviare su contraseña al correo indicado.
+Hay situaciones específicas que debe soportar el diseño del sistema como son:
+ Un TUTOR asignado a un AULA puede cambiar de persona – debe quedar un registro del
+cambio- por renuncia y/o retiro del programa.
+ Un AULA puede cambiar de TUTOR sin perder su información de asistencia histórica.
+ Un AULA puede cambiar de HORARIO sin perder su información de asistencia histórica.
+ Un ESTUDIANTE se puede cambiar de AULA sin perder su información se asistencia histórica
+ni las notas que ya le han sido tomadas. Restricción: Un estudiante solo se puede mover
+entre AULAS 4º y/o 5º, o entre aulas 9º y/o 10º por las edades de los estudiantes no se
+pueden mezclar primaria con secundaria.
+Aparte de los reportes de autogestión indicados para los tutores, se requiere los siguientes reportes
+que serán indicadores tanto de gestión como del éxito del programa:
+ Asistencia general del AULA de cada IED mostrando en la historia por semana, el tutor de
+ese momento, la fecha real de la clase, indicar si es festivo o no, el horario (día, hora de
+inicio y hora fin), si la clase se dictó o no, si se dictó la(s) hora(s) dictada(s), sino se dictó la(s)
+hora(s) no dictada(s), sino se dictó el motivo, sino se dictó indicar si hubo reposición de la
+clase y la fecha.
+ Asistencia general de ESTUDIANTE por ESTUDIANTE con un detalle similar al del AULA. Esto
+es necesario porque la asistencia del estudiante al programa es un factor clave en el éxito
+de este.
+ Notas de cada ESTUDIANTE indicando Institución, grado, el programa, periodo, componente
+y nota, así como un total de acuerdo con el porcentaje de cada componente y nota
+definitiva. (boletín de calificaciones)

@@ -20,16 +20,15 @@ import {
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
-import { Auth } from '../auth/decorators';
-import { ValidRoles } from '../auth/interfaces';
+import { Auth } from 'src/auth/decorators';
+import { ValidRoles } from 'src/auth/interfaces';
 
-@ApiTags('Usuarios')
+@Auth(ValidRoles.ADMINISTRADOR)
 @Controller('usuarios')
 export class UsuariosController {
     constructor(private readonly usuariosService: UsuariosService) { }
 
     @Post()
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Crear un nuevo usuario',
@@ -48,7 +47,6 @@ export class UsuariosController {
     }
 
     @Get()
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Listar todos los usuarios',
@@ -62,8 +60,8 @@ export class UsuariosController {
         return this.usuariosService.findAll();
     }
 
+    @Auth() //Sobreescritura del decorator a nivel de controller: el tutor puede ver su propio usuario
     @Get(':usuario')
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Obtener usuario por nombre',
@@ -86,7 +84,6 @@ export class UsuariosController {
     }
 
     @Put(':usuario')
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Actualizar un usuario',
@@ -108,7 +105,6 @@ export class UsuariosController {
     }
 
     @Delete(':usuario')
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Eliminar un usuario',
@@ -132,7 +128,6 @@ export class UsuariosController {
     }
 
     @Post(':usuario/send-password')
-    @Auth(ValidRoles.ADMINISTRADOR)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Enviar contraseña del usuario',
