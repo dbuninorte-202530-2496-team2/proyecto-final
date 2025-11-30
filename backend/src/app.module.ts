@@ -20,6 +20,7 @@ import { AsistenciaTutorModule } from './asistencia-tutor/asistencia-tutor.modul
 import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { EstudianteAulaModule } from './estudiante-aula/estudiante-aula.module';
 import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia-estudiantes.module';
+import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
 
 @Module({
   imports: [
@@ -63,6 +64,8 @@ import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia
     FestivoModule,
 
     AsistenciaTutorModule,
+
+    TipoDocumentoModule,
   ],
 })
 export class AppModule { }
