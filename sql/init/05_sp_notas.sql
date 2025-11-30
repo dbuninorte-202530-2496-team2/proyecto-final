@@ -48,13 +48,7 @@ BEGIN
     v_tutor_actual := fn_obtener_tutor_actual_aula(v_id_aula);
     
     IF v_tutor_actual != p_id_tutor THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM personal p
-            INNER JOIN rol r ON p.id_rol = r.id
-            WHERE p.id = p_id_tutor AND r.nombre IN ('ADMINISTRATIVO', 'ADMINISTRADOR')
-        ) THEN
-            RAISE EXCEPTION 'El tutor % no está autorizado para ingresar notas en esta aula', p_id_tutor;
-        END IF;
+        RAISE EXCEPTION 'El tutor % no está asignado al aula actual', p_id_tutor;
     END IF;
     
     SELECT id INTO v_id_nota
@@ -135,32 +129,6 @@ BEGIN
     CROSS JOIN total_nota tn;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
--- Procedure: Crear componentes estándar para un periodo
-CREATE OR REPLACE PROCEDURE sp_crear_componentes_periodo(
-    p_id_periodo INT,
-    p_tipo_programa INT
-)
-LANGUAGE plpgsql AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM periodo WHERE id = p_id_periodo) THEN
-        RAISE EXCEPTION 'El periodo % no existe', p_id_periodo;
-    END IF;
-    
-    IF p_tipo_programa NOT IN (1, 2) THEN
-        RAISE EXCEPTION 'Tipo de programa inválido. Use 1 (INSIDECLASSROOM) o 2 (OUTSIDECLASSROOM)';
-    END IF;
-    
-    INSERT INTO componente (nombre, tipo_programa, porcentaje, id_periodo)
-    VALUES 
-        ('Participación', p_tipo_programa, 20, p_id_periodo),
-        ('Tareas', p_tipo_programa, 20, p_id_periodo),
-        ('Examen Parcial', p_tipo_programa, 30, p_id_periodo),
-        ('Examen Final', p_tipo_programa, 30, p_id_periodo);
-    
-    RAISE NOTICE 'Componentes creados para periodo % y tipo programa %', p_id_periodo, p_tipo_programa;
-END;
-$$;
 
 -- Procedure: Validar que los porcentajes de componentes sumen 100%
 CREATE OR REPLACE PROCEDURE sp_validar_porcentajes_periodo(

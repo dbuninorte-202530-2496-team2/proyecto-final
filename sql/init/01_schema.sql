@@ -164,6 +164,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_set_fecha_programada;
 CREATE TRIGGER trg_set_fecha_programada
 BEFORE INSERT OR UPDATE ON aula_horario_sem
 FOR EACH ROW
@@ -215,6 +216,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+drop trigger if exists trg_no_solape_clase;
 CREATE TRIGGER trg_no_solape_clase
 BEFORE INSERT OR UPDATE ON aula_horario_sem
 FOR EACH ROW
@@ -355,3 +357,37 @@ CREATE TRIGGER trg_semana_immutable
 BEFORE UPDATE ON semana
 FOR EACH ROW
 EXECUTE FUNCTION block_updates();
+
+
+
+
+-- Trigger para validar que la suma de porcentajes de componentes no exceda 100%
+CREATE OR REPLACE FUNCTION check_porcentaje_componentes()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_total NUMERIC;
+BEGIN
+    -- Sumar porcentajes existentes para el mismo periodo y tipo de programa
+    -- Excluyendo el registro actual (importante para UPDATE)
+    SELECT COALESCE(SUM(porcentaje), 0)
+    INTO v_total
+    FROM componente
+    WHERE id_periodo = NEW.id_periodo
+      AND tipo_programa = NEW.tipo_programa
+      AND id IS DISTINCT FROM NEW.id; -- IS DISTINCT FROM maneja NULLs en ID si fuera el caso (aunque es PK)
+
+    IF (v_total + NEW.porcentaje) > 100 THEN
+        RAISE EXCEPTION 'La suma de porcentajes excede el 100%%. Acumulado: %, Intentado: %', 
+            v_total, NEW.porcentaje
+            USING ERRCODE = 'P0001'; -- Código de error genérico o personalizado
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_porcentaje_componentes ON componente;
+CREATE TRIGGER trg_check_porcentaje_componentes
+BEFORE INSERT OR UPDATE ON componente
+FOR EACH ROW
+EXECUTE FUNCTION check_porcentaje_componentes();

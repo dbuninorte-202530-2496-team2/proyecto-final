@@ -131,6 +131,9 @@ export class AulaHorarioSemanaService {
         );
       }
 
+      // Validar intensidad horaria semanal
+      await this.validarIntensidadHoraria(id_aula, id_semana, tipoPrograma);
+
       // Crear la asignación
       const insertQuery = `
         INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana)
@@ -345,6 +348,9 @@ export class AulaHorarioSemanaService {
         );
       }
 
+      // Validar intensidad horaria semanal
+      await this.validarIntensidadHoraria(id_aula, id_semana, tipoPrograma);
+
       // Crear la sesión
       const insertQuery = `
         INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana)
@@ -364,6 +370,37 @@ export class AulaHorarioSemanaService {
       throw new InternalServerErrorException(
         `Error al crear la sesión específica: ${error.message}`
       );
+    }
+  }
+
+  private async validarIntensidadHoraria(
+    id_aula: number,
+    id_semana: number,
+    tipoPrograma: number
+  ): Promise<void> {
+    const countQuery = `
+      SELECT COUNT(*) as count 
+      FROM aula_horario_sem 
+      WHERE id_aula = $1 AND id_semana = $2
+    `;
+    const countResult = await this.pool.query(countQuery, [id_aula, id_semana]);
+    const horasAsignadas = parseInt(countResult.rows[0].count, 10);
+
+    // +1 porque estamos intentando agregar una nueva
+    const horasTotales = horasAsignadas + 1;
+
+    if (tipoPrograma === 1) { // INSIDECLASSROOM (4° y 5°)
+      if (horasTotales > 2) {
+        throw new BadRequestException(
+          `INSIDECLASSROOM solo permite máximo 2 horas semanales. Actualmente tiene ${horasAsignadas} horas.`
+        );
+      }
+    } else if (tipoPrograma === 2) { // OUTSIDECLASSROOM (9° y 10°)
+      if (horasTotales > 3) {
+        throw new BadRequestException(
+          `OUTSIDECLASSROOM solo permite máximo 3 horas semanales. Actualmente tiene ${horasAsignadas} horas.`
+        );
+      }
     }
   }
 

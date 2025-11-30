@@ -21,6 +21,9 @@ import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { EstudianteAulaModule } from './estudiante-aula/estudiante-aula.module';
 import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia-estudiantes.module';
 import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
+import { ComponentesModule } from './componentes/componentes.module';
+import { NotasModule } from './notas/notas.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -34,7 +37,7 @@ import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
     AuthModule,
 
     RolesModule,
-    
+
     InstitucionesModule,
 
     SedesModule,
@@ -50,7 +53,7 @@ import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
     EstudiantesModule,
 
     EstudianteAulaModule,
-    
+
     AsistenciaEstudiantesModule,
 
     UsuariosModule,
@@ -66,6 +69,12 @@ import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
     AsistenciaTutorModule,
 
     TipoDocumentoModule,
+
+    ComponentesModule,
+
+    NotasModule,
+
+    ReportesModule,
   ],
 })
 export class AppModule { }
