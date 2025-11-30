@@ -16,7 +16,8 @@ import SupervisionTab from './tabs/SupervisionTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
 import AsignacionesTab from './tabs/AsignacionesTab';
 import ReportesAvanzadosTab from './tabs/ReportesAvanzadosTab';
-import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck } from 'lucide-react';
+import { SeguridadTab } from './tabs/SeguridadTab';
+import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck, Lock } from 'lucide-react';
 
 export default function Dashboard() {
   const { rol } = useAuth();
@@ -33,14 +34,15 @@ export default function Dashboard() {
       { value: 'horarios', label: 'Horarios', icon: Clock },
       { value: 'asignaciones', label: 'Asignaciones', icon: FileText },
       { value: 'supervision', label: 'Supervisión', icon: UserCheck },
-      { value: 'reposiciones', label: 'Reposiciones', icon: Calendar },
+      { value: 'reposiciones', label: 'Asistencia Tutor', icon: UserCheck },
     ] : []),
-    { value: 'clases', label: esTutor ? 'Mis Clases' : 'Registro de Clases', icon: BookOpen },
+    { value: 'clases', label: esTutor ? 'Mi Asistencia' : 'Asistencia Estudiantes', icon: Users },
     ...(esTutor ? [{ value: 'mi-horario', label: 'Mi Horario', icon: Clock }] : []),
     { value: 'notas', label: 'Notas', icon: FileText },
     ...(tienePermisoAdministrativo ? [
       { value: 'configuracion', label: 'Configuración', icon: Settings },
       { value: 'reportes-avanzados', label: 'Reportes Avanzados', icon: BarChart3 },
+      ...(rol === 'ADMINISTRADOR' ? [{ value: 'seguridad', label: 'Seguridad', icon: Lock }] : []),
     ] : []),
     { value: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -104,6 +106,11 @@ export default function Dashboard() {
                   <TabsContent value="reportes-avanzados">
                     <ReportesAvanzadosTab />
                   </TabsContent>
+                  {rol === 'ADMINISTRADOR' && (
+                    <TabsContent value="seguridad">
+                      <SeguridadTab />
+                    </TabsContent>
+                  )}
                 </>
               )}
 

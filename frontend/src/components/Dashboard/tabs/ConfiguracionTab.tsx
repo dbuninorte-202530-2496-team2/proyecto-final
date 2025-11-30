@@ -12,6 +12,7 @@ import {
   ConfiguracionCatalogosBasicos,
   ConfiguracionAcademicaEvaluacion,
 } from './ConfiguracionSecciones';
+import { ConfiguracionSemanas } from './ConfiguracionSemanas';
 
 const ConfiguracionTab: React.FC = () => {
   return (
@@ -38,6 +39,10 @@ const ConfiguracionTab: React.FC = () => {
         <div className="space-y-12">
 
           <ConfiguracionCatalogosBasicos />
+
+          <div className="border-t-2 border-gray-200" />
+
+          <ConfiguracionSemanas />
 
           <div className="border-t-2 border-gray-200" />
 

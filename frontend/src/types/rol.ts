@@ -1,5 +1,5 @@
 export interface Rol {
   id: number;
-  nombre: 'ADMINISTRATIVO' | 'TUTOR';
+  nombre: 'ADMINISTRADOR' | 'ADMINISTRATIVO' | 'TUTOR' | string;
   descripcion?: string;
 }
