@@ -1,76 +1,229 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { Aula } from '../../../types/aula';
 import type { Horario } from '../../../types/horario';
-import type { AulaHorario } from '../../../types/asignaciones';
-import { Search, Plus, Clock3, CalendarDays, Edit2, Trash2, Calendar } from 'lucide-react';
+import type { AulaHorarioSemana } from '../../../types/aula-horario-semana';
+import type { Periodo } from '../../../types/periodo';
+import type { Semana } from '../../../types/semana';
+import { Calendar, Clock3, Plus, School } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../ui/Card';
 import AsignacionesForm from './AsignacionesForm';
-
-// Helpers
-const DIAS_LABEL: Record<string, string> = {
-    LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado',
-};
-
-const duracionMinutos = (ini: string, fin: string) => {
-    const [h1, m1] = ini.split(':').map(Number);
-    const [h2, m2] = fin.split(':').map(Number);
-    return h2 * 60 + m2 - (h1 * 60 + m1);
-};
-
-// Mock Data (To be replaced with real API calls later if needed, keeping as is for now)
-const MOCK_AULAS: Aula[] = [
-    { id: 1, grado: 4, grupo: 'A', id_sede: 1 },
-    { id: 2, grado: 5, grupo: 'B', id_sede: 1 },
-    { id: 3, grado: 9, grupo: 'A', id_sede: 2 },
-    { id: 4, grado: 10, grupo: 'A', id_sede: 3 },
-];
-const MOCK_HORARIOS: Horario[] = [
-    { id: 1, dia_sem: 'LU', hora_ini: '07:00', hora_fin: '07:45' },
-    { id: 2, dia_sem: 'LU', hora_ini: '07:45', hora_fin: '08:30' },
-    { id: 3, dia_sem: 'MI', hora_ini: '10:00', hora_fin: '10:50' },
-    { id: 4, dia_sem: 'SA', hora_ini: '08:00', hora_fin: '08:45' },
-];
-const MOCK_AULA_HORARIOS: AulaHorario[] = [
-    { id: 1, id_aula: 1, id_horario: 1 },
-    { id: 2, id_aula: 1, id_horario: 2 },
-    { id: 3, id_aula: 3, id_horario: 3 },
-    { id: 4, id_aula: 4, id_horario: 4 },
-];
+import PeriodSelector from './PeriodSelector';
+import WeekSelector from './WeekSelector';
+import CalendarView from './CalendarView';
+import { toast } from 'sonner';
+import apiClient from '../../../services/api/api-client';
 
 const AulaHorarioTab: React.FC = () => {
-    const [aulas] = useState<Aula[]>(MOCK_AULAS);
-    const [horarios] = useState<Horario[]>(MOCK_HORARIOS);
-    const [aulaHorarios, setAulaHorarios] = useState<AulaHorario[]>(MOCK_AULA_HORARIOS);
-    const [searchAulaHorario, setSearchAulaHorario] = useState('');
+    // Data state
+    const [aulas, setAulas] = useState<Aula[]>([]);
+    const [horarios, setHorarios] = useState<Horario[]>([]);
+    const [periodos, setPeriodos] = useState<Periodo[]>([]);
+    const [semanas, setSemanas] = useState<Semana[]>([]);
+    const [assignments, setAssignments] = useState<AulaHorarioSemana[]>([]);
 
+    // Selection state
+    const [selectedPeriodoId, setSelectedPeriodoId] = useState<number>(0);
+    const [selectedSemanaId, setSelectedSemanaId] = useState<number>(0);
+    const [selectedInstitucionNombre, setSelectedInstitucionNombre] = useState<string>('');
+    const [selectedAulaId, setSelectedAulaId] = useState<number>(0);
+
+    // Form state
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [formData, setFormData] = useState<Partial<AulaHorario>>({});
+    const [formData, setFormData] = useState<Partial<AulaHorarioSemana & { applyToPeriod?: boolean }>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const aulaHorariosFiltrado = useMemo(() => {
-        return aulaHorarios.filter((asig) => {
-            const aula = aulas.find((a) => a.id === asig.id_aula);
-            const horario = horarios.find((h) => h.id === asig.id_horario);
-            const termino = searchAulaHorario.toLowerCase().trim();
-            if (!termino) return true;
-            const str = `${aula?.grado ?? ''}${aula?.grupo ?? ''} ${DIAS_LABEL[horario?.dia_sem ?? ''] ?? ''} ${horario?.hora_ini ?? ''}`;
-            return str.toLowerCase().includes(termino);
-        });
-    }, [aulaHorarios, aulas, horarios, searchAulaHorario]);
+    // Loading states
+    const [isLoadingPeriodos, setIsLoadingPeriodos] = useState(false);
+    const [isLoadingSemanas, setIsLoadingSemanas] = useState(false);
+    const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
 
-    const openCreateForm = () => {
+    // Fetch periods on mount
+    useEffect(() => {
+        const fetchPeriodos = async () => {
+            setIsLoadingPeriodos(true);
+            try {
+                const response = await apiClient.get('/periodos');
+                setPeriodos(response.data);
+                if (response.data.length > 0) {
+                    setSelectedPeriodoId(response.data[0].id);
+                }
+            } catch (error) {
+                toast.error('Error al cargar periodos');
+                console.error(error);
+            } finally {
+                setIsLoadingPeriodos(false);
+            }
+        };
+        fetchPeriodos();
+    }, []);
+
+    // Fetch aulas and horarios on mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [aulasRes, horariosRes] = await Promise.all([
+                    apiClient.get('/aulas'),
+                    apiClient.get('/horario')  // Controller uses singular 'horario'
+                ]);
+                // Map backend snake_case to camelCase
+                const aulasWithCamelCase = aulasRes.data.map((aula: any) => ({
+                    ...aula,
+                    sedeNombre: aula.sede_nombre,
+                    institucionNombre: aula.institucion_nombre,
+                }));
+                setAulas(aulasWithCamelCase);
+
+                // Set initial institution if available
+                if (aulasWithCamelCase.length > 0) {
+                    const firstInst = aulasWithCamelCase[0].institucionNombre;
+                    if (firstInst) setSelectedInstitucionNombre(firstInst);
+                }
+
+                setHorarios(horariosRes.data);
+            } catch (error) {
+                toast.error('Error al cargar datos');
+                console.error(error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Fetch semanas when selectedPeriodoId changes
+    useEffect(() => {
+        if (selectedPeriodoId) {
+            const fetchSemanas = async () => {
+                setIsLoadingSemanas(true);
+                try {
+                    const response = await apiClient.get(`/periodos/${selectedPeriodoId}/semanas`);
+                    setSemanas(response.data);
+                } catch (error) {
+                    toast.error('Error al cargar semanas');
+                    console.error(error);
+                } finally {
+                    setIsLoadingSemanas(false);
+                }
+            };
+            fetchSemanas();
+        } else {
+            setSemanas([]);
+        }
+    }, [selectedPeriodoId]);
+
+    // Fetch assignments when selectedSemanaId changes
+    useEffect(() => {
+        if (selectedSemanaId) {
+            const fetchAssignments = async () => {
+                setIsLoadingAssignments(true);
+                try {
+                    const response = await apiClient.get(`/semanas/${selectedSemanaId}/aulas-horarios`);
+                    setAssignments(response.data);
+                } catch (error) {
+                    toast.error('Error al cargar asignaciones');
+                    console.error(error);
+                } finally {
+                    setIsLoadingAssignments(false);
+                }
+            };
+            fetchAssignments();
+        } else {
+            setAssignments([]);
+        }
+    }, [selectedSemanaId]);
+
+    // Filtered Data
+    const semanasDelPeriodo = useMemo(() =>
+        semanas.filter(s => s.id_periodo === selectedPeriodoId).sort((a, b) => new Date(a.fec_ini).getTime() - new Date(b.fec_ini).getTime()),
+        [semanas, selectedPeriodoId]
+    );
+
+    // Unique Institutions
+    const instituciones = useMemo(() => {
+        const insts = new Set<string>();
+        aulas.forEach(a => {
+            if (a.institucionNombre) insts.add(a.institucionNombre);
+        });
+        return Array.from(insts).sort();
+    }, [aulas]);
+
+    // Filtered Aulas by Institution
+    const aulasFiltradas = useMemo(() => {
+        if (!selectedInstitucionNombre) return aulas;
+        return aulas.filter(a => a.institucionNombre === selectedInstitucionNombre);
+    }, [aulas, selectedInstitucionNombre]);
+
+    // Auto-select first week when period changes
+    useEffect(() => {
+        if (semanasDelPeriodo.length > 0) {
+            setSelectedSemanaId(semanasDelPeriodo[0].id);
+        } else {
+            setSelectedSemanaId(0);
+        }
+    }, [selectedPeriodoId, semanasDelPeriodo]);
+
+    const currentAssignments = useMemo(() =>
+        assignments.filter(a => {
+            const matchesWeek = a.id_semana === selectedSemanaId;
+            const matchesAula = selectedAulaId === 0 || a.id_aula === selectedAulaId;
+            // Also filter by institution if selected (check if aula is in aulasFiltradas)
+            const matchesInstitution = selectedInstitucionNombre
+                ? aulasFiltradas.some(aula => aula.id === a.id_aula)
+                : true;
+            return matchesWeek && matchesAula && matchesInstitution;
+        }),
+        [assignments, selectedSemanaId, selectedAulaId, selectedInstitucionNombre, aulasFiltradas]
+    );
+
+    // Handlers
+    const handleSlotClick = (_dia: string, horario: Horario) => {
+        if (!selectedSemanaId) {
+            toast.error('Selecciona una semana primero');
+            return;
+        }
         setIsEditing(false);
         setFormError(null);
-        setFormData({ id_aula: 0, id_horario: 0 });
+        setFormData({
+            id_horario: horario.id,
+            id_semana: selectedSemanaId,
+            id_aula: selectedAulaId !== 0 ? selectedAulaId : undefined, // Pre-fill aula if selected
+            applyToPeriod: false
+        });
         setIsFormOpen(true);
     };
 
-    const openEditForm = (asig: AulaHorario) => {
+    const handleAssignmentClick = (assignment: AulaHorarioSemana) => {
         setIsEditing(true);
         setFormError(null);
-        setFormData(asig);
+        setFormData({ ...assignment, applyToPeriod: false });
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = async (assignment: AulaHorarioSemana) => {
+        if (!window.confirm('¿Eliminar esta asignación?')) return;
+
+        try {
+            await apiClient.delete(`/aulas/${assignment.id_aula}/horarios/${assignment.id_horario}/${assignment.id_semana}`);
+            // Refresh assignments
+            const response = await apiClient.get(`/semanas/${selectedSemanaId}/aulas-horarios`);
+            setAssignments(response.data);
+        } catch (error) {
+            console.error('Error al eliminar asignación:', error);
+        }
+    };
+
+    const openCreateForm = () => {
+        if (!selectedSemanaId) {
+            toast.error('Selecciona una semana primero');
+            return;
+        }
+        setIsEditing(false);
+        setFormError(null);
+        setFormData({
+            id_semana: selectedSemanaId,
+            id_aula: selectedAulaId !== 0 ? selectedAulaId : undefined, // Pre-fill aula if selected
+            applyToPeriod: false
+        });
         setIsFormOpen(true);
     };
 
@@ -80,38 +233,49 @@ const AulaHorarioTab: React.FC = () => {
     };
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: Number(value) }));
+        const { name, value, type } = e.target;
+        if (type === 'checkbox') {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: Number(value) }));
+        }
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!formData.id_aula || !formData.id_horario) {
+        if (!formData.id_aula || !formData.id_horario || !formData.id_semana) {
             setFormError('Todos los campos son obligatorios.');
             return;
         }
         setIsSubmitting(true);
-        // Mock submit logic
-        const payload: AulaHorario = {
-            id: formData.id ?? -1,
-            id_aula: formData.id_aula as number,
-            id_horario: formData.id_horario as number,
-        };
 
-        if (isEditing && formData.id != null) {
-            setAulaHorarios((prev) => prev.map((a) => (a.id === formData.id ? payload : a)));
-        } else {
-            const newId = aulaHorarios.length > 0 ? Math.max(...aulaHorarios.map((a) => a.id)) + 1 : 1;
-            payload.id = newId;
-            setAulaHorarios((prev) => [...prev, payload]);
+        try {
+            if (formData.applyToPeriod) {
+                // Bulk Assignment - POST /aulas/:id_aula/horarios/bulk
+                await apiClient.post(`/aulas/${formData.id_aula}/horarios/bulk`, {
+                    id_horario: formData.id_horario,
+                    id_periodo: selectedPeriodoId,
+                });
+                // Refresh assignments for current week
+                const response = await apiClient.get(`/semanas/${selectedSemanaId}/aulas-horarios`);
+                setAssignments(response.data);
+            } else {
+                // Single Assignment - POST /aulas/:id_aula/horarios
+                await apiClient.post(`/aulas/${formData.id_aula}/horarios`, {
+                    id_horario: formData.id_horario,
+                    id_semana: formData.id_semana,
+                });
+                // Refresh assignments for current week
+                const response = await apiClient.get(`/semanas/${selectedSemanaId}/aulas-horarios`);
+                setAssignments(response.data);
+            }
+            closeForm();
+        } catch (error) {
+            console.error('Error al crear asignación:', error);
+            // Error is already handled by apiClient interceptor
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
-        closeForm();
-    };
-
-    const handleDelete = (id: number) => {
-        if (!window.confirm('¿Eliminar esta asignación Aula ↔ Horario?')) return;
-        setAulaHorarios((prev) => prev.filter((a) => a.id !== id));
     };
 
     return (
@@ -123,87 +287,104 @@ const AulaHorarioTab: React.FC = () => {
                             <Calendar className="w-6 h-6 text-green-600" />
                             Sesiones
                         </CardTitle>
-                        <CardDescription>Asignación de horarios a aulas</CardDescription>
+                        <CardDescription>Programación semanal de aulas</CardDescription>
                     </div>
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center gap-4">
-                        <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
-                            <Clock3 className="w-5 h-5 text-green-600" />
-                            Asignación Aula ↔ Horario
-                        </h3>
-                        <button
-                            onClick={openCreateForm}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Nueva asignación
-                        </button>
-                    </div>
+                <div className="space-y-6">
+                    {/* Selectors Grid - 4 columns for better alignment */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <PeriodSelector
+                            periodos={periodos}
+                            selectedPeriodoId={selectedPeriodoId}
+                            onSelect={setSelectedPeriodoId}
+                        />
 
-                    <div className="relative mb-3">
-                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por aula, día u hora..."
-                            value={searchAulaHorario}
-                            onChange={(e) => setSearchAulaHorario(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 text-sm"
+                        {/* Institution Selector */}
+                        <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="p-2 rounded-lg bg-blue-50">
+                                <School className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Institución</label>
+                                <select
+                                    value={selectedInstitucionNombre}
+                                    onChange={(e) => {
+                                        setSelectedInstitucionNombre(e.target.value);
+                                        setSelectedAulaId(0); // Reset aula selection
+                                    }}
+                                    className="w-full bg-transparent font-semibold text-gray-900 focus:outline-none cursor-pointer truncate"
+                                >
+                                    <option value="">Todas las instituciones</option>
+                                    {instituciones.map((inst) => (
+                                        <option key={inst} value={inst}>
+                                            {inst}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Aula Selector */}
+                        <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="p-2 rounded-lg bg-orange-50">
+                                <School className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Filtrar por Aula</label>
+                                <select
+                                    value={selectedAulaId}
+                                    onChange={(e) => setSelectedAulaId(Number(e.target.value))}
+                                    className="w-full bg-transparent font-semibold text-gray-900 focus:outline-none cursor-pointer truncate"
+                                >
+                                    <option value={0}>Todas las aulas</option>
+                                    {aulasFiltradas.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.grado}°{a.grupo}{a.sedeNombre ? ` - ${a.sedeNombre}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <WeekSelector
+                            semanas={semanasDelPeriodo}
+                            selectedSemanaId={selectedSemanaId}
+                            onSelect={setSelectedSemanaId}
                         />
                     </div>
 
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-                        <table className="w-full">
-                            <thead className="bg-green-50 border-b border-green-100">
-                                <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Aula</th>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Día</th>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Hora inicio</th>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Hora fin</th>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Duración</th>
-                                    <th className="px-4 py-2 text-center text-xs font-bold text-green-900 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-100">
-                                {aulaHorariosFiltrado.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm italic">No hay asignaciones.</td></tr>
-                                ) : (
-                                    aulaHorariosFiltrado.map((asig) => {
-                                        const aula = aulas.find((a) => a.id === asig.id_aula);
-                                        const horario = horarios.find((h) => h.id === asig.id_horario);
-                                        const mins = horario ? duracionMinutos(horario.hora_ini, horario.hora_fin) : 0;
-                                        return (
-                                            <tr key={asig.id} className="hover:bg-green-50 transition-colors">
-                                                <td className="px-4 py-2 text-sm">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-semibold">
-                                                        Aula {aula?.grado}°{aula?.grupo}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2 text-sm text-gray-800">
-                                                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold">
-                                                        <CalendarDays className="w-3 h-3" />
-                                                        {horario ? DIAS_LABEL[horario.dia_sem] : '—'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2 text-sm font-mono text-gray-900">{horario?.hora_ini ?? '—'}</td>
-                                                <td className="px-4 py-2 text-sm font-mono text-gray-900">{horario?.hora_fin ?? '—'}</td>
-                                                <td className="px-4 py-2 text-sm">
-                                                    {horario && <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">{mins} min</span>}
-                                                </td>
-                                                <td className="px-4 py-2 text-sm">
-                                                    <div className="flex justify-center gap-2">
-                                                        <button onClick={() => openEditForm(asig)} className="p-2 hover:bg-amber-100 rounded-lg text-amber-600"><Edit2 className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleDelete(asig.id)} className="p-2 hover:bg-red-100 rounded-lg text-red-600"><Trash2 className="w-4 h-4" /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                    {/* Actions & Calendar */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
+                                <Clock3 className="w-5 h-5 text-green-600" />
+                                Horario Semanal
+                            </h3>
+                            <button
+                                onClick={openCreateForm}
+                                disabled={!selectedSemanaId}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Nueva sesión
+                            </button>
+                        </div>
+
+                        {selectedSemanaId ? (
+                            <CalendarView
+                                horarios={horarios}
+                                assignments={currentAssignments}
+                                aulas={aulas}
+                                onSlotClick={handleSlotClick}
+                                onAssignmentClick={handleAssignmentClick}
+                            />
+                        ) : (
+                            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-gray-500">
+                                Selecciona un periodo y una semana para ver el calendario.
+                            </div>
+                        )}
                     </div>
 
                     {isFormOpen && (
@@ -211,19 +392,25 @@ const AulaHorarioTab: React.FC = () => {
                             mode="aula_horario"
                             isEditing={isEditing}
                             formData={formData}
-                            aulas={aulas}
-                            tutores={[]} // No needed for this mode
+                            aulas={aulas} // Pass all aulas, filtering will be handled inside the form
+                            tutores={[]}
                             horarios={horarios}
                             formError={formError}
                             isSubmitting={isSubmitting}
                             onClose={closeForm}
                             onSubmit={handleSubmit}
+                            onDelete={() => {
+                                if (formData.id_horario && formData.id_semana && formData.id_aula) {
+                                    handleDelete(formData as AulaHorarioSemana);
+                                    closeForm();
+                                }
+                            }}
                             onChange={handleFormChange}
                         />
                     )}
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 };
 

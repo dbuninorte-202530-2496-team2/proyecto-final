@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_CONNECTION } from '../database/database.module';
-import { AsignarHorarioAulaDto, CrearSesionEspecificaDto } from './dto';
+import { AsignarHorarioAulaDto, CrearSesionEspecificaDto, AsignarHorarioBulkDto } from './dto';
 import { AulaHorarioSemanaEntity } from './entities/aula-horario-semana.entity';
 
 @Injectable()
@@ -249,13 +249,26 @@ export class AulaHorarioSemanaService {
         );
       }
     } else if (jornada === 'MANANA_Y_TARDE') {
-      // Jornada mixta usa 06:00-18:00, por lo tanto la contraria es FUERA de ese rango
-      const dentroRangoNormal = horaIni >= '06:00' && horaFin <= '18:00';
-      if (dentroRangoNormal) {
+      // Siempre validar que esté dentro de la ventana global del programa
+      if (horaIni < '06:00' || horaFin > '18:00') {
         throw new BadRequestException(
-          `La institución es jornada MAÑANA Y TARDE (06:00-18:00), OUTSIDECLASSROOM debe ser FUERA del horario normal. Horario recibido: ${horaIni} - ${horaFin} está dentro del rango`
+          `El programa solo permite horarios entre 06:00 y 18:00. Recibido: ${horaIni} - ${horaFin}`
         );
       }
+
+      // Lunes a viernes: debe ser fuera de 06:00–18:00
+      if (diaSem !== 'SA') {
+        const dentroJornadaNormal =
+          horaIni >= '06:00' && horaFin <= '18:00';
+
+        if (dentroJornadaNormal) {
+          throw new BadRequestException(
+            `La institución es jornada MIXTA (MAÑANA y TARDE). De lunes a viernes OUTSIDECLASSROOM debe ser fuera de la jornada normal (06:00–18:00).`
+          );
+        }
+      }
+
+      // Sábado ('SA'): permitido dentro de 06:00–18:00
     } else {
       throw new BadRequestException(
         `Jornada de institución no reconocida: ${jornada}`
@@ -452,6 +465,150 @@ export class AulaHorarioSemanaService {
       }
       throw new InternalServerErrorException(
         `Error al eliminar la asignación: ${error.message}`
+      );
+    }
+  }
+
+  async findAsignacionesBySemana(id_semana: number): Promise<AulaHorarioSemanaEntity[]> {
+    try {
+      // Verificar que la semana existe
+      const semanaCheck = await this.pool.query('SELECT id FROM semana WHERE id = $1', [id_semana]);
+      if (semanaCheck.rows.length === 0) {
+        throw new NotFoundException(`Semana con id ${id_semana} no encontrada`);
+      }
+
+      const query = `
+        SELECT 
+          ahs.id_aula,
+          ahs.id_horario,
+          ahs.id_semana,
+          ahs.fecha_programada,
+          h.dia_sem,
+          h.hora_ini,
+          h.hora_fin
+        FROM aula_horario_sem ahs
+        INNER JOIN horario h ON ahs.id_horario = h.id
+        WHERE ahs.id_semana = $1
+        ORDER BY h.dia_sem, h.hora_ini
+      `;
+      const result = await this.pool.query(query, [id_semana]);
+      return result.rows;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al obtener las asignaciones de la semana: ${error.message}`
+      );
+    }
+  }
+
+  async asignarHorarioBulk(
+    id_aula: number,
+    asignarHorarioBulkDto: AsignarHorarioBulkDto
+  ): Promise<{ message: string; asignaciones_creadas: number; id_horario: number; id_periodo: number }> {
+    const { id_horario, id_periodo } = asignarHorarioBulkDto;
+
+    try {
+      // Verificar que el aula existe y obtener info
+      const aulaQuery = `
+        SELECT a.id, a.tipo_programa, i.jornada
+        FROM aula a
+        INNER JOIN sede s ON a.id_sede = s.id
+        INNER JOIN institucion i ON s.id_inst = i.id
+        WHERE a.id = $1
+      `;
+      const aulaResult = await this.pool.query(aulaQuery, [id_aula]);
+      if (aulaResult.rows.length === 0) {
+        throw new NotFoundException(`Aula con id ${id_aula} no encontrada`);
+      }
+
+      const aula = aulaResult.rows[0];
+      const tipoPrograma = aula.tipo_programa;
+      const jornada = aula.jornada;
+
+      // Verificar horario
+      const horarioQuery = `
+        SELECT id, dia_sem, hora_ini::text as hora_ini, hora_fin::text as hora_fin
+        FROM horario 
+        WHERE id = $1
+      `;
+      const horarioResult = await this.pool.query(horarioQuery, [id_horario]);
+      if (horarioResult.rows.length === 0) {
+        throw new NotFoundException(`Horario con id ${id_horario} no encontrado`);
+      }
+
+      const horario = horarioResult.rows[0];
+      const diaSem = horario.dia_sem;
+      const horaIni = horario.hora_ini;
+      const horaFin = horario.hora_fin;
+
+      // Validar horario
+      if (tipoPrograma === 1) {
+        await this.validarHorarioINSIDE(diaSem, horaIni, horaFin, jornada);
+      } else if (tipoPrograma === 2) {
+        await this.validarHorarioOUTSIDE(diaSem, horaIni, horaFin, jornada);
+      }
+
+      // Obtener todas las semanas del periodo
+      const semanasQuery = `
+        SELECT id FROM semana 
+        WHERE id_periodo = $1
+        ORDER BY fec_ini
+      `;
+      const semanasResult = await this.pool.query(semanasQuery, [id_periodo]);
+      if (semanasResult.rows.length === 0) {
+        throw new NotFoundException(`No se encontraron semanas para el periodo ${id_periodo}`);
+      }
+
+      const semanas = semanasResult.rows.map(r => r.id);
+      let asignacionesCreadas = 0;
+
+      // Transaction para crear todas las asignaciones
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        for (const id_semana of semanas) {
+          // Verificar si ya existe
+          const existeQuery = `
+            SELECT * FROM aula_horario_sem 
+            WHERE id_aula = $1 AND id_horario = $2 AND id_semana = $3
+          `;
+          const existeResult = await client.query(existeQuery, [id_aula, id_horario, id_semana]);
+
+          if (existeResult.rows.length === 0) {
+            // No existe, crear
+            const insertQuery = `
+              INSERT INTO aula_horario_sem (id_aula, id_horario, id_semana)
+              VALUES ($1, $2, $3)
+            `;
+            await client.query(insertQuery, [id_aula, id_horario, id_semana]);
+            asignacionesCreadas++;
+          }
+          // Si ya existe, skipear
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+
+      return {
+        message: `Horario asignado a ${asignacionesCreadas} semanas exitosamente`,
+        asignaciones_creadas: asignacionesCreadas,
+        id_horario,
+        id_periodo,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error al asignar horario masivamente: ${error.message}`
       );
     }
   }

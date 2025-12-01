@@ -49,8 +49,12 @@ const duracionMinutos = (ini: string, fin: string): number => {
 
 const generateHours = (): { value: string; label: string }[] => {
   const hours: { value: string; label: string }[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 5) {
+  // Solo generar horas de 06:00 a 18:00 (rango operativo de instituciones)
+  for (let h = 6; h <= 18; h++) {
+    const startMin = h === 18 ? 0 : 0; // Si es hora 18, solo 18:00
+    const endMin = h === 18 ? 0 : 55;  // Si es hora 18, solo 18:00
+
+    for (let m = startMin; m <= endMin; m += 5) {
       hours.push({
         value: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
         label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
@@ -77,11 +81,10 @@ const HoraSelect: React.FC<HoraSelectProps> = ({ id, name, value, onChange, erro
       name={name}
       value={value}
       onChange={onChange}
-      className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all font-medium ${
-        error
-          ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-          : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-      }`}
+      className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all font-medium ${error
+        ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+        : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+        }`}
     >
       <option value="" disabled>
         Selecciona una hora
@@ -282,11 +285,10 @@ const HorariosForm: React.FC<HorariosFormProps> = ({
                 name="dia_sem"
                 value={formData.dia_sem ?? 'LU'}
                 onChange={handleFieldChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.dia_sem
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.dia_sem
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               >
                 <option value="" disabled>
                   Selecciona un día

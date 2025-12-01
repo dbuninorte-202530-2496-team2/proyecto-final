@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { TutorAula, AulaHorario } from '../../../types/asignaciones';
+import type { AulaHorarioSemana } from '../../../types/aula-horario-semana';
 import type { Aula } from '../../../types/aula';
 import type { Personal } from '../../../types/personal';
 import type { Horario } from '../../../types/horario';
@@ -10,7 +11,7 @@ export type AsignacionMode = 'tutor_aula' | 'aula_horario';
 interface AsignacionesFormProps {
   mode: AsignacionMode;
   isEditing: boolean;
-  formData: Partial<TutorAula & AulaHorario>;
+  formData: Partial<TutorAula & AulaHorario & AulaHorarioSemana & { applyToPeriod?: boolean }>;
 
   aulas: Aula[];
   tutores?: Personal[];
@@ -21,6 +22,7 @@ interface AsignacionesFormProps {
 
   onClose: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onDelete?: () => void;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
@@ -54,18 +56,35 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
   isSubmitting,
   onClose,
   onSubmit,
+  onDelete,
   onChange,
 }) => {
   const isTutorAula = mode === 'tutor_aula';
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [selectedInstitucion, setSelectedInstitucion] = useState<string>('');
+
+  // Get unique institutions from passed aulas
+  const uniqueInstituciones = useMemo(() => {
+    const insts = new Set<string>();
+    aulas.forEach(a => {
+      if (a.institucionNombre) insts.add(a.institucionNombre);
+    });
+    return Array.from(insts).sort();
+  }, [aulas]);
+
+  // Filter aulas based on internal selection
+  const filteredAulas = useMemo(() => {
+    if (!selectedInstitucion) return aulas;
+    return aulas.filter(a => a.institucionNombre === selectedInstitucion);
+  }, [aulas, selectedInstitucion]);
 
   const titulo = isTutorAula
     ? isEditing
       ? 'Editar asignación Tutor ↔ Aula'
       : 'Nueva asignación Tutor ↔ Aula'
     : isEditing
-    ? 'Editar asignación Aula ↔ Horario'
-    : 'Nueva asignación Aula ↔ Horario';
+      ? 'Editar asignación Aula ↔ Horario'
+      : 'Nueva asignación Aula ↔ Horario';
 
   const descripcion = isTutorAula
     ? 'Relaciona un tutor con un aula específica.'
@@ -186,13 +205,13 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
   const getTutorLabel = (tutorId: number | undefined) => {
     if (!tutorId) return '';
     const tutor = tutores?.find((t) => t.id === tutorId);
-    return tutor ? `${tutor.nombres} ${tutor.apellidos}` : '';
+    return tutor ? `${tutor.nombre} ${tutor.apellido}` : '';
   };
 
   const getHorarioLabel = (horarioId: number | undefined) => {
     if (!horarioId) return '';
     const horario = horarios?.find((h) => h.id === horarioId);
-    return horario ? `${DIAS_LABEL[horario.dia_sem]} ${horario.hora_ini}-${horario.hora_fin}` : '';
+    return horario ? `${DIAS_LABEL[horario.dia_sem]} ${horario.hora_ini.substring(0, 5)}-${horario.hora_fin.substring(0, 5)}` : '';
   };
 
   // Calcular fecha mínima para desasignación (día siguiente a asignación)
@@ -239,23 +258,48 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
               <label htmlFor="id_aula" className="block text-sm font-semibold text-gray-700 mb-2">
                 Aula <span className="text-red-500">*</span>
               </label>
+
+              {/* Internal Institution Filter for New Assignments */}
+              {!isEditing && (
+                <div className="mb-2">
+                  <select
+                    value={selectedInstitucion}
+                    onChange={(e) => {
+                      setSelectedInstitucion(e.target.value);
+                      // Clear selected aula if it doesn't belong to new institution
+                      if (formData.id_aula) {
+                        const currentAula = aulas.find(a => a.id === formData.id_aula);
+                        if (currentAula && currentAula.institucionNombre !== e.target.value && e.target.value !== '') {
+                          onChange({ target: { name: 'id_aula', value: 0 } } as any);
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-gray-600 bg-gray-50"
+                  >
+                    <option value="">Todas las instituciones</option>
+                    {uniqueInstituciones.map(inst => (
+                      <option key={inst} value={inst}>{inst}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <select
                 id="id_aula"
                 name="id_aula"
                 value={formData.id_aula ?? 0}
                 onChange={handleFieldChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.id_aula
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.id_aula
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               >
                 <option value={0} disabled>
                   Selecciona un aula
                 </option>
-                {aulas.map((a) => (
+                {filteredAulas.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.grado}°{a.grupo} — Aula #{a.id}
+                    {a.grado}°{a.grupo} — {a.sedeNombre ? `${a.sedeNombre}` : `Aula #${a.id}`}
                   </option>
                 ))}
               </select>
@@ -285,18 +329,17 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
                     name="id_tutor"
                     value={formData.id_tutor ?? 0}
                     onChange={handleFieldChange}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                      fieldErrors.id_tutor
-                        ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                        : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                    }`}
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.id_tutor
+                      ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                      }`}
                   >
                     <option value={0} disabled>
                       Selecciona un tutor
                     </option>
                     {tutores?.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.nombres} {t.apellidos}
+                        {t.nombre} {t.apellido}
                       </option>
                     ))}
                   </select>
@@ -325,11 +368,10 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
                     name="fecha_asignado"
                     value={formData.fecha_asignado ?? ''}
                     onChange={handleDateAsignacionChange}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                      fieldErrors.fecha_asignado
-                        ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                        : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                    }`}
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.fecha_asignado
+                      ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                      }`}
                   />
                   {fieldErrors.fecha_asignado && (
                     <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
@@ -358,13 +400,12 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
                     onChange={handleFieldChange}
                     min={minFechaDesasignacion}
                     disabled={!formData.fecha_asignado}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                      !formData.fecha_asignado
-                        ? 'border-gray-300 bg-gray-100 cursor-not-allowed text-gray-500'
-                        : fieldErrors.fecha_desasignado
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${!formData.fecha_asignado
+                      ? 'border-gray-300 bg-gray-100 cursor-not-allowed text-gray-500'
+                      : fieldErrors.fecha_desasignado
                         ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                         : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                    }`}
+                      }`}
                   />
                   {!formData.fecha_asignado && (
                     <p className="mt-1 text-sm text-gray-500 font-medium flex items-center gap-1">
@@ -397,18 +438,17 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
                     name="id_horario"
                     value={formData.id_horario ?? 0}
                     onChange={handleFieldChange}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                      fieldErrors.id_horario
-                        ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                        : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                    }`}
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.id_horario
+                      ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                      }`}
                   >
                     <option value={0} disabled>
                       Selecciona un horario
                     </option>
                     {horarios?.map((h) => (
                       <option key={h.id} value={h.id}>
-                        {DIAS_LABEL[h.dia_sem] ?? h.dia_sem} — {h.hora_ini} - {h.hora_fin}
+                        {DIAS_LABEL[h.dia_sem] ?? h.dia_sem} — {h.hora_ini.substring(0, 5)} - {h.hora_fin.substring(0, 5)}
                       </option>
                     ))}
                   </select>
@@ -424,6 +464,26 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
                       {getHorarioLabel(formData.id_horario)} seleccionado
                     </p>
                   )}
+                </div>
+
+                {/* Bulk Assignment Checkbox */}
+                <div className="col-span-1 md:col-span-2 mt-2">
+                  <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="applyToPeriod"
+                      name="applyToPeriod"
+                      checked={formData.applyToPeriod || false}
+                      onChange={(e) => onChange({ target: { name: 'applyToPeriod', value: e.target.checked } } as any)}
+                      className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <label htmlFor="applyToPeriod" className="text-sm text-indigo-900 font-medium cursor-pointer select-none">
+                      Aplicar a todas las semanas del periodo
+                      <span className="block text-xs text-indigo-600 font-normal mt-0.5">
+                        Si se marca, esta asignación se replicará en todas las semanas del periodo actual.
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </>
             )}
@@ -461,6 +521,15 @@ const AsignacionesForm: React.FC<AsignacionesFormProps> = ({
 
           {/* Botones */}
           <div className="flex gap-3 justify-end pt-4 border-t-2 border-gray-200">
+            {isEditing && onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="mr-auto px-5 py-2.5 border-2 border-red-200 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 hover:border-red-300 font-semibold transition-all"
+              >
+                Eliminar
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
