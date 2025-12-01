@@ -16,7 +16,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { TutorAulaService } from './tutor-aula.service';
-import { AsignarTutorDto, DesasignarTutorDto } from './dto';
+import { AsignarTutorDto, DesasignarTutorDto, CambiarTutorDto } from './dto';
 import { TutorAulaEntity } from './entities/tutor-aula.entity';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
@@ -67,6 +67,27 @@ export class TutorAulaController {
   @ApiResponse({ status: 404, description: 'Aula no encontrada' })
   findTutoresHistorico(@Param('id_aula', ParseIntPipe) id_aula: number) {
     return this.tutorAulaService.findTutoresHistorico(id_aula);
+  }
+
+  @Get('tutor/:id_tutor/historico')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener histórico de asignaciones de un tutor',
+    description: 'Retorna todas las aulas donde el tutor ha estado asignado.'
+  })
+  @ApiParam({
+    name: 'id_tutor',
+    description: 'ID del tutor',
+    example: 5,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Histórico del tutor obtenido exitosamente',
+    type: [TutorAulaEntity],
+  })
+  @ApiResponse({ status: 404, description: 'Tutor no encontrado' })
+  findHistoricoPorTutor(@Param('id_tutor', ParseIntPipe) id_tutor: number) {
+    return this.tutorAulaService.findHistoricoPorTutor(id_tutor);
   }
 
   @Post(':id_aula/tutores')
@@ -141,5 +162,36 @@ export class TutorAulaController {
     @Body() desasignarTutorDto: DesasignarTutorDto,
   ) {
     return this.tutorAulaService.desasignarTutor(id_aula, id_tutor, desasignarTutorDto);
+  }
+
+  @Put(':id_aula/cambiar-tutor')
+  @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Cambiar tutor de un aula (Atómico)',
+    description: 'Desasigna el tutor actual y asigna uno nuevo en una sola transacción. El aula DEBE tener un tutor activo.'
+  })
+  @ApiParam({
+    name: 'id_aula',
+    description: 'ID del aula',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tutor cambiado exitosamente',
+    type: TutorAulaEntity,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El aula no tiene tutor activo (use asignar) o datos inválidos',
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
+  @ApiResponse({ status: 404, description: 'Aula o tutor no encontrado' })
+  cambiarTutor(
+    @Param('id_aula', ParseIntPipe) id_aula: number,
+    @Body() cambiarTutorDto: CambiarTutorDto,
+  ) {
+    return this.tutorAulaService.cambiarTutor(id_aula, cambiarTutorDto);
   }
 }

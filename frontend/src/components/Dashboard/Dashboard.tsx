@@ -14,7 +14,8 @@ import ConfiguracionTab from './tabs/ConfiguracionTab';
 import ReposicionesTab from './tabs/ReposicionesTab';
 import SupervisionTab from './tabs/SupervisionTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
-import AsignacionesTab from './tabs/AsignacionesTab';
+import TutorAulaTab from './tabs/TutorAulaTab';
+import AulaHorarioTab from './tabs/AulaHorarioTab';
 import ReportesAvanzadosTab from './tabs/ReportesAvanzadosTab';
 import { SeguridadTab } from './tabs/SeguridadTab';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck, Lock } from 'lucide-react';
@@ -32,7 +33,8 @@ export default function Dashboard() {
       { value: 'personal', label: 'Personal', icon: Users },
       { value: 'estudiantes', label: 'Estudiantes', icon: BookOpen },
       { value: 'horarios', label: 'Horarios', icon: Clock },
-      { value: 'asignaciones', label: 'Asignaciones', icon: FileText },
+      { value: 'tutores', label: 'Tutores', icon: Users },
+      { value: 'sesiones', label: 'Sesiones', icon: Calendar },
       { value: 'supervision', label: 'Supervisión', icon: UserCheck },
       { value: 'reposiciones', label: 'Asistencia Tutor', icon: UserCheck },
     ] : []),
@@ -91,8 +93,11 @@ export default function Dashboard() {
                   <TabsContent value="horarios">
                     <HorariosTab />
                   </TabsContent>
-                  <TabsContent value="asignaciones">
-                    <AsignacionesTab />
+                  <TabsContent value="tutores">
+                    <TutorAulaTab />
+                  </TabsContent>
+                  <TabsContent value="sesiones">
+                    <AulaHorarioTab />
                   </TabsContent>
                   <TabsContent value="supervision">
                     <SupervisionTab />

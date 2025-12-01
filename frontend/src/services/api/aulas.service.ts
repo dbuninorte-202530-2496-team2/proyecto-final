@@ -24,6 +24,11 @@ export interface UpdateAulaDto {
     id_sede?: number;
 }
 
+export interface CambiarTutorDto {
+    id_tutor_nuevo: number;
+    fecha_cambio?: string;
+}
+
 // Aulas Service
 class AulasService {
     private readonly BASE_PATH = '/aulas';
@@ -50,6 +55,26 @@ class AulasService {
 
     async getTutoresHistorico(id: number): Promise<any[]> {
         const response = await apiClient.get<any[]>(`${this.BASE_PATH}/${id}/tutores-historico`);
+        return response.data;
+    }
+
+    async getHistoricoPorTutor(id_tutor: number): Promise<any[]> {
+        const response = await apiClient.get<any[]>(`/aulas/tutor/${id_tutor}/historico`);
+        return response.data;
+    }
+
+    async asignarTutor(id_aula: number, id_tutor: number, fecha_asignado: string): Promise<any> {
+        const response = await apiClient.post<any>(`${this.BASE_PATH}/${id_aula}/tutores`, { id_tutor, fecha_asignado });
+        return response.data;
+    }
+
+    async desasignarTutor(id_aula: number, id_tutor: number, fecha_desasignado: string): Promise<any> {
+        const response = await apiClient.put<any>(`${this.BASE_PATH}/${id_aula}/tutores/${id_tutor}/desasignar`, { fecha_desasignado });
+        return response.data;
+    }
+
+    async cambiarTutor(id_aula: number, data: CambiarTutorDto): Promise<any> {
+        const response = await apiClient.put<any>(`${this.BASE_PATH}/${id_aula}/cambiar-tutor`, data);
         return response.data;
     }
 
