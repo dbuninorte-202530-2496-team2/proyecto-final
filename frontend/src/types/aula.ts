@@ -14,3 +14,16 @@ export interface AulaFormData {
   grupo: number;
   id_sede: number;
 }
+
+// DTOs for API operations
+export interface CreateAulaDto {
+  grado: 4 | 5 | 9 | 10;
+  grupo: number;
+  id_sede: number;
+}
+
+export interface UpdateAulaDto {
+  grado?: 4 | 5 | 9 | 10;
+  grupo?: number;
+  id_sede?: number;
+}

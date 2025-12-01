@@ -13,14 +13,12 @@ interface AulasFormProps {
   isEditing: boolean;
   formData: Partial<Aula>;
   instituciones: Institucion[];
-  sedesFiltradas: Sede[];
+  sedes: Sede[]; // Changed from sedesFiltradas to all sedes
   selectedInstitucionId: InstitucionIdFilter;
-  // Removed unused props
   onClose: () => void;
 }
 
 const GRADOS_PERMITIDOS = [4, 5, 9, 10];
-// const GRUPOS_VALIDOS = /^[A-Z]$/; // No longer used as grupo is number
 
 interface FieldErrors {
   institucion?: string;
@@ -38,7 +36,7 @@ const AulasForm: React.FC<AulasFormProps> = ({
   isEditing,
   formData: initialFormData,
   instituciones,
-  sedesFiltradas,
+  sedes,
   selectedInstitucionId: initialInstitucionId,
   onClose,
 }) => {
@@ -47,6 +45,11 @@ const AulasForm: React.FC<AulasFormProps> = ({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Filter sedes based on selected institution
+  const sedesFiltradas = selectedInstitucionId === 'all'
+    ? sedes
+    : sedes.filter(s => s.id_inst === selectedInstitucionId);
 
   // Validar campos individuales
   const validateField = (name: string, value: any) => {
@@ -103,7 +106,25 @@ const AulasForm: React.FC<AulasFormProps> = ({
 
   const handleInstitucionChange = (value: InstitucionIdFilter) => {
     setSelectedInstitucionId(value);
-    validateField('institucion', value);
+    // Reset sede selection when institution changes
+    setFormData(prev => ({
+      ...prev,
+      id_sede: 0
+    }));
+
+    // Clear institution error if a valid institution is selected
+    if (value !== 'all') {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.institucion;
+        return newErrors;
+      });
+    } else {
+      setFieldErrors(prev => ({
+        ...prev,
+        institucion: 'Debes seleccionar una institución'
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,8 +216,8 @@ const AulasForm: React.FC<AulasFormProps> = ({
                 handleInstitucionChange(newValue);
               }}
               className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.institucion
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
                 }`}
               required
             >
@@ -227,14 +248,15 @@ const AulasForm: React.FC<AulasFormProps> = ({
               name="id_sede"
               value={formData.id_sede ?? 0}
               onChange={handleFieldChange}
+              disabled={selectedInstitucionId === 'all'}
               className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.sede
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                } ${selectedInstitucionId === 'all' ? 'opacity-50 cursor-not-allowed' : ''}`}
               required
             >
               <option value={0} disabled>
-                Selecciona una sede
+                {selectedInstitucionId === 'all' ? 'Primero selecciona una institución' : 'Selecciona una sede'}
               </option>
               {sedesFiltradas.map((sede) => (
                 <option key={sede.id} value={sede.id}>
@@ -261,8 +283,8 @@ const AulasForm: React.FC<AulasFormProps> = ({
               value={formData.grado ?? 4}
               onChange={handleFieldChange}
               className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.grado
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
                 }`}
               required
             >
@@ -294,8 +316,8 @@ const AulasForm: React.FC<AulasFormProps> = ({
               onChange={handleFieldChange}
               placeholder="Ej: 1, 2, 3..."
               className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.grupo
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
                 }`}
               required
             />

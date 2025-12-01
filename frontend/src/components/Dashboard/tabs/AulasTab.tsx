@@ -51,6 +51,7 @@ export function AulasTab() {
 
   const handleCreate = () => {
     setSelectedAula(null);
+    setFilterInstitucion('all');
     setShowForm(true);
   };
 
@@ -309,14 +310,11 @@ export function AulasTab() {
       {showForm && (
         <AulasForm
           isEditing={selectedAula !== null}
-          formData={selectedAula ?? { grado: 4, grupo: '', id_sede: 0 }}
+          formData={selectedAula ?? { grado: 4, grupo: 1, id_sede: 0 }}
           instituciones={instituciones}
-          sedesFiltradas={sedesFiltradasPorInstitucion}
+          sedes={sedes}
           selectedInstitucionId={filterInstitucion}
-          formError={null}
-          isSubmitting={false}
           onClose={handleFormClose}
-        // Removed props that are no longer needed as AulasForm handles submission internally
         />
       )}
     </Card>
