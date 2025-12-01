@@ -67,7 +67,9 @@ CREATE TABLE IF NOT EXISTS aula(
     ) STORED,
 	id_sede int NOT NULL,
 	FOREIGN KEY (id_sede) REFERENCES sede(id),
-	CHECK (grado IN (4, 5, 9, 10))
+	CHECK (grado IN (4, 5, 9, 10)),
+
+	UNIQUE (id_sede, grado, grupo)
 );
 
 CREATE TABLE IF NOT EXISTS horario(

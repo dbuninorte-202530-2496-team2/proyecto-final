@@ -65,7 +65,7 @@ class EstudiantesService {
     }
 
     async update(id: number, data: UpdateEstudianteDto): Promise<Estudiante> {
-        const response = await apiClient.patch<Estudiante>(`${this.BASE_PATH}/${id}`, data);
+        const response = await apiClient.put<Estudiante>(`${this.BASE_PATH}/${id}`, data);
         return response.data;
     }
 

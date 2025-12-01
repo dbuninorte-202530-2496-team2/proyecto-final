@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { Estudiante } from '../../../types/estudiante';
 import type { TipoDocumento } from '../../../types/tipoDocumento';
+import type { Sede } from '../../../types/sede';
+import type { Institucion } from '../../../types/institucion';
 import type { Aula } from '../../../types/aula';
-import { estudiantesService, tipoDocumentoService, aulasService } from '../../../services/api';
+import { estudiantesService, tipoDocumentoService, aulasService, sedesService, institucionesService } from '../../../services/api';
 import {
   Card,
   CardHeader,
@@ -16,6 +18,8 @@ const EstudiantesTab: React.FC = () => {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [instituciones, setInstituciones] = useState<Institucion[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -43,14 +47,18 @@ const EstudiantesTab: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [estudiantesData, tiposDocData, aulasData] = await Promise.all([
+      const [estudiantesData, tiposDocData, aulasData, sedesData, institucionesData] = await Promise.all([
         estudiantesService.getAll(),
         tipoDocumentoService.getAll(),
         aulasService.getAll(),
+        sedesService.getAll(),
+        institucionesService.getAll(),
       ]);
       setEstudiantes(estudiantesData);
       setTiposDoc(tiposDocData);
       setAulas(aulasData);
+      setSedes(sedesData);
+      setInstituciones(institucionesData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       alert('Error al cargar datos');
@@ -166,6 +174,16 @@ const EstudiantesTab: React.FC = () => {
     return aula ? `${aula.grado}°${aula.grupo}` : '—';
   };
 
+  const getInstitucionLabel = (aulaId: number | null) => {
+    if (!aulaId) return '—';
+    const aula = aulas.find((a) => a.id === aulaId);
+    if (!aula) return '—';
+    const sede = sedes.find((s) => s.id === aula.id_sede);
+    if (!sede) return '—';
+    const institucion = instituciones.find((i) => i.id === sede.id_inst);
+    return institucion ? institucion.nombre : '—';
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -219,6 +237,7 @@ const EstudiantesTab: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Código</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Nombre</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Tipo Doc</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Institución</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Aula</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Score IN</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Score OUT</th>
@@ -240,6 +259,7 @@ const EstudiantesTab: React.FC = () => {
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{e.codigo}</td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{e.nombre} {e.apellidos}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{getTipoDocLabel(e.tipo_doc)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{getInstitucionLabel(e.aula_actual_id || null)}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{getAulaLabel(e.aula_actual_id || null)}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{e.score_in ?? '—'}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{e.score_out ?? '—'}</td>
@@ -398,11 +418,24 @@ const EstudiantesTab: React.FC = () => {
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
                 >
                   <option value={0}>Seleccione...</option>
-                  {aulas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.grado}° {a.grupo} - Sede {a.id_sede}
-                    </option>
-                  ))}
+                  {aulas
+                    .filter(a => {
+                      if (!estudianteMover.aula_actual_id) return true;
+                      const currentAula = aulas.find(ca => ca.id === estudianteMover.aula_actual_id);
+                      if (!currentAula) return true;
+
+                      const isPrimary = currentAula.grado === 4 || currentAula.grado === 5;
+                      const isSecondary = currentAula.grado === 9 || currentAula.grado === 10;
+
+                      if (isPrimary) return a.grado === 4 || a.grado === 5;
+                      if (isSecondary) return a.grado === 9 || a.grado === 10;
+                      return true;
+                    })
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.grado}° {a.grupo} - Sede {sedes.find(s => s.id === a.id_sede)?.nombre || a.id_sede}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div className="flex gap-3 justify-end pt-4 border-t-2 border-gray-200">
