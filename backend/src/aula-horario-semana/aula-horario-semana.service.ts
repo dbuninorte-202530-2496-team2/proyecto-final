@@ -80,7 +80,7 @@ export class AulaHorarioSemanaService {
 
       const aula = aulaResult.rows[0];
       const tipoPrograma = aula.tipo_programa; // 1: INSIDE, 2: OUTSIDE
-      const jornada = aula.jornada; // MAÑANA, TARDE, MIXTA
+      const jornada = aula.jornada; // UNICA_MANANA, UNICA_TARDE, MANANA_Y_TARDE
 
       // Obtener información del horario
       const horarioQuery = `
@@ -180,21 +180,21 @@ export class AulaHorarioSemanaService {
     }
 
     // Validar según jornada de la institución
-    if (jornada === 'MAÑANA') {
+    if (jornada === 'UNICA_MANANA') {
       // Jornada mañana: 06:00 - 12:00
       if (horaIni < '06:00' || horaFin > '12:00') {
         throw new BadRequestException(
-          `La institución tiene jornada MAÑANA (06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
+          `La institución tiene jornada ÚNICA MAÑANA (06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
         );
       }
-    } else if (jornada === 'TARDE') {
+    } else if (jornada === 'UNICA_TARDE') {
       // Jornada tarde: 12:00 - 18:00
       if (horaIni < '12:00' || horaFin > '18:00') {
         throw new BadRequestException(
-          `La institución tiene jornada TARDE (12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
+          `La institución tiene jornada ÚNICA TARDE (12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
         );
       }
-    } else if (jornada === 'MIXTA') {
+    } else if (jornada === 'MANANA_Y_TARDE') {
       // Jornada mixta: puede usar todo el rango 06:00 - 18:00
       // Ya validado arriba
     } else {
@@ -234,26 +234,26 @@ export class AulaHorarioSemanaService {
     }
 
     // Validar jornada contraria
-    if (jornada === 'MAÑANA') {
+    if (jornada === 'UNICA_MANANA') {
       // Jornada contraria es TARDE: 12:00 - 18:00
       if (horaIni < '12:00' || horaFin > '18:00') {
         throw new BadRequestException(
-          `La institución es jornada MAÑANA, OUTSIDECLASSROOM debe ser en jornada contraria (TARDE: 12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
+          `La institución es jornada ÚNICA MAÑANA, OUTSIDECLASSROOM debe ser en jornada contraria (TARDE: 12:00-18:00). Horario recibido: ${horaIni} - ${horaFin}`
         );
       }
-    } else if (jornada === 'TARDE') {
+    } else if (jornada === 'UNICA_TARDE') {
       // Jornada contraria es MAÑANA: 06:00 - 12:00
       if (horaIni < '06:00' || horaFin > '12:00') {
         throw new BadRequestException(
-          `La institución es jornada TARDE, OUTSIDECLASSROOM debe ser en jornada contraria (MAÑANA: 06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
+          `La institución es jornada ÚNICA TARDE, OUTSIDECLASSROOM debe ser en jornada contraria (MAÑANA: 06:00-12:00). Horario recibido: ${horaIni} - ${horaFin}`
         );
       }
-    } else if (jornada === 'MIXTA') {
+    } else if (jornada === 'MANANA_Y_TARDE') {
       // Jornada mixta usa 06:00-18:00, por lo tanto la contraria es FUERA de ese rango
       const dentroRangoNormal = horaIni >= '06:00' && horaFin <= '18:00';
       if (dentroRangoNormal) {
         throw new BadRequestException(
-          `La institución es jornada MIXTA (06:00-18:00), OUTSIDECLASSROOM debe ser FUERA del horario normal. Horario recibido: ${horaIni} - ${horaFin} está dentro del rango`
+          `La institución es jornada MAÑANA Y TARDE (06:00-18:00), OUTSIDECLASSROOM debe ser FUERA del horario normal. Horario recibido: ${horaIni} - ${horaFin} está dentro del rango`
         );
       }
     } else {

@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
 import type { UserRole } from "../../types/auth.types";
+import axios from "axios";
 
 interface LoginFormProps {
-  onLogin: (usuario: string, rol: UserRole) => void;
+  onLogin: (usuario: string, rol: UserRole, token: string) => void;
 }
-
-// Usuarios de prueba
-const DEMO_USERS = {
-  admin: { password: "admin123", rol: "ADMINISTRADOR" as UserRole },
-  administrativo: { password: "admin123", rol: "ADMINISTRATIVO" as UserRole },
-  tutor: { password: "tutor123", rol: "TUTOR" as UserRole }
-};
 
 interface ValidationErrors {
   usuario?: string;
@@ -53,20 +47,34 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     setError("");
     setLoading(true);
 
-    // Simular delay de red
-    await new Promise((res) => setTimeout(res, 800));
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await axios.post(`${apiUrl}/auth/login`, {
+        usuario,
+        contrasena: password
+      });
 
-    const user = DEMO_USERS[usuario as keyof typeof DEMO_USERS];
+      // Backend returns: { id, usuario, contrasena, rol, token }
+      const { token, rol } = response.data;
 
-    if (user && user.password === password) {
-      onLogin(usuario, user.rol);
-    } else {
-      setError("Usuario o contraseña incorrectos. Intenta de nuevo.");
-      // Clear password on error
+      if (token && rol) {
+        onLogin(usuario, rol as UserRole, token);
+      } else {
+        console.error('Invalid response structure:', response.data);
+        setError("Error en la respuesta del servidor. Intenta de nuevo.");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        setError("Usuario o contraseña incorrectos.");
+      } else if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else {
+        setError("Error al conectar con el servidor. Verifica tu conexión.");
+      }
       setPassword("");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -122,7 +130,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </div>
         )}
       </div>
-      
+
       {/* Campo Contraseña */}
       <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
         <div className="flex items-center justify-between">
@@ -206,12 +214,12 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
       <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg animate-fadeInUp" style={{ animationDelay: "0.4s" }}>
         <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-          <span>💡</span> Usuarios de prueba disponibles:
+          <span></span> Usuarios de prueba disponibles:
         </p>
         <div className="space-y-2 text-xs text-blue-800">
           <div className="bg-white/60 p-2 rounded border border-blue-200 hover:bg-white transition-colors">
             <span className="font-bold text-blue-900">Administrador:</span>
-            <span className="text-gray-600"> admin / admin123</span>
+            <span className="text-gray-600"> administrador / admin123</span>
           </div>
           <div className="bg-white/60 p-2 rounded border border-blue-200 hover:bg-white transition-colors">
             <span className="font-bold text-blue-900">Administrativo:</span>

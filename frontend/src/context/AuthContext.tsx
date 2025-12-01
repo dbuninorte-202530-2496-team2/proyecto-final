@@ -1,5 +1,5 @@
-import { createContext, useContext, useState,  useEffect } from 'react';
-import type {ReactNode} from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UserRole, AuthContextType } from '../types/auth.types';
 
@@ -19,23 +19,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const storedUser = localStorage.getItem('usuario');
     const storedRole = localStorage.getItem('rol');
-    
-    if (storedUser && storedRole) {
+    const storedToken = localStorage.getItem('token');
+
+    // Solo autenticar si tenemos usuario, rol Y token
+    if (storedUser && storedRole && storedToken) {
       setUsuario(storedUser);
       setRol(storedRole as UserRole);
       setIsAuthenticated(true);
+    } else {
+      // Si falta alguno, limpiar todo
+      localStorage.removeItem('usuario');
+      localStorage.removeItem('rol');
+      localStorage.removeItem('token');
+      setIsAuthenticated(false);
     }
   }, []);
 
-  const login = (user: string, userRole: UserRole) => {
+  const login = (user: string, userRole: UserRole, token: string) => {
     setUsuario(user);
     setRol(userRole);
     setIsAuthenticated(true);
-    
+
     // Guardar en localStorage para persistencia
     localStorage.setItem('usuario', user);
     localStorage.setItem('rol', userRole);
-    
+    localStorage.setItem('token', token); // Guardar el token JWT
+
     // Navegar al dashboard
     navigate('/dashboard');
   };
@@ -44,11 +53,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUsuario(null);
     setRol(null);
     setIsAuthenticated(false);
-    
+
     // Limpiar localStorage
     localStorage.removeItem('usuario');
     localStorage.removeItem('rol');
-    
+    localStorage.removeItem('token'); // Limpiar el token
+
     // Navegar al login
     navigate('/');
   };

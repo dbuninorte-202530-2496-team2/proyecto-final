@@ -4,6 +4,9 @@ import type { Aula } from '../../../types/aula';
 import type { Institucion } from '../../../types/institucion';
 import type { Sede } from '../../../types/sede';
 
+import { aulasService } from '../../../services/api/aulas.service';
+import type { CreateAulaDto, UpdateAulaDto } from '../../../types/aula';
+
 export type InstitucionIdFilter = number | 'all';
 
 interface AulasFormProps {
@@ -12,16 +15,12 @@ interface AulasFormProps {
   instituciones: Institucion[];
   sedesFiltradas: Sede[];
   selectedInstitucionId: InstitucionIdFilter;
-  formError: string | null;
-  isSubmitting: boolean;
+  // Removed unused props
   onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  onChangeInstitucion: (value: InstitucionIdFilter) => void;
 }
 
 const GRADOS_PERMITIDOS = [4, 5, 9, 10];
-const GRUPOS_VALIDOS = /^[A-Z]$/;
+// const GRUPOS_VALIDOS = /^[A-Z]$/; // No longer used as grupo is number
 
 interface FieldErrors {
   institucion?: string;
@@ -37,18 +36,17 @@ const getProgramaFromGrado = (grado?: number) => {
 
 const AulasForm: React.FC<AulasFormProps> = ({
   isEditing,
-  formData,
+  formData: initialFormData,
   instituciones,
   sedesFiltradas,
-  selectedInstitucionId,
-  formError,
-  isSubmitting,
+  selectedInstitucionId: initialInstitucionId,
   onClose,
-  onSubmit,
-  onChange,
-  onChangeInstitucion,
 }) => {
+  const [formData, setFormData] = useState<Partial<Aula>>(initialFormData);
+  const [selectedInstitucionId, setSelectedInstitucionId] = useState<InstitucionIdFilter>(initialInstitucionId);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Validar campos individuales
   const validateField = (name: string, value: any) => {
@@ -77,12 +75,10 @@ const AulasForm: React.FC<AulasFormProps> = ({
         }
         break;
       case 'grupo':
-        if (!value || value.trim() === '') {
+        if (!value || value === '') {
           errors.grupo = 'El grupo es obligatorio';
-        } else if (value.trim().length !== 1) {
-          errors.grupo = 'El grupo debe ser una sola letra (A-Z)';
-        } else if (!GRUPOS_VALIDOS.test(value.toUpperCase())) {
-          errors.grupo = 'El grupo debe ser una letra mayúscula (A-Z)';
+        } else if (isNaN(Number(value)) || Number(value) < 1) {
+          errors.grupo = 'El grupo debe ser un número positivo';
         } else {
           delete errors.grupo;
         }
@@ -96,21 +92,73 @@ const AulasForm: React.FC<AulasFormProps> = ({
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    onChange(e);
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'grupo' || name === 'grado' || name === 'id_sede' ? Number(value) : value
+    }));
+
     validateField(name, value);
   };
 
   const handleInstitucionChange = (value: InstitucionIdFilter) => {
-    onChangeInstitucion(value);
+    setSelectedInstitucionId(value);
     validateField('institucion', value);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate all fields
+    const errors: FieldErrors = {};
+    if (selectedInstitucionId === 'all') errors.institucion = 'Debes seleccionar una institución';
+    if (!formData.id_sede) errors.sede = 'Debes seleccionar una sede';
+    if (!formData.grupo) errors.grupo = 'El grupo es obligatorio';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      if (isEditing && formData.id) {
+        const updateData: UpdateAulaDto = {
+          grado: formData.grado as 4 | 5 | 9 | 10,
+          grupo: Number(formData.grupo),
+          id_sede: Number(formData.id_sede)
+        };
+        await aulasService.update(formData.id, updateData);
+      } else {
+        const createData: CreateAulaDto = {
+          grado: formData.grado as 4 | 5 | 9 | 10,
+          grupo: Number(formData.grupo),
+          id_sede: Number(formData.id_sede!)
+        };
+        await aulasService.create(createData);
+      }
+      onClose();
+    } catch (error: any) {
+      console.error('Error saving aula:', error);
+      // API client handles toast, but we can show form error if needed
+      if (error.response?.data?.message) {
+        setFormError(Array.isArray(error.response.data.message)
+          ? error.response.data.message.join(', ')
+          : error.response.data.message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scaleIn border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
@@ -130,7 +178,7 @@ const AulasForm: React.FC<AulasFormProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Institución */}
           <div>
             <label htmlFor="institucion" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -146,11 +194,10 @@ const AulasForm: React.FC<AulasFormProps> = ({
                 const newValue: InstitucionIdFilter = value === 'all' ? 'all' : Number(value);
                 handleInstitucionChange(newValue);
               }}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                fieldErrors.institucion
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.institucion
                   ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               required
             >
               <option value="all" disabled>
@@ -180,11 +227,10 @@ const AulasForm: React.FC<AulasFormProps> = ({
               name="id_sede"
               value={formData.id_sede ?? 0}
               onChange={handleFieldChange}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                fieldErrors.sede
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.sede
                   ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               required
             >
               <option value={0} disabled>
@@ -214,11 +260,10 @@ const AulasForm: React.FC<AulasFormProps> = ({
               name="grado"
               value={formData.grado ?? 4}
               onChange={handleFieldChange}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                fieldErrors.grado
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.grado
                   ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               required
             >
               {GRADOS_PERMITIDOS.map((g) => (
@@ -243,16 +288,15 @@ const AulasForm: React.FC<AulasFormProps> = ({
             <input
               id="grupo"
               name="grupo"
-              type="text"
+              type="number"
+              min="1"
               value={formData.grupo ?? ''}
               onChange={handleFieldChange}
-              placeholder="Ej: A, B, C..."
-              maxLength={1}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all uppercase ${
-                fieldErrors.grupo
+              placeholder="Ej: 1, 2, 3..."
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.grupo
                   ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               required
             />
             {fieldErrors.grupo && (
@@ -261,7 +305,7 @@ const AulasForm: React.FC<AulasFormProps> = ({
                 {fieldErrors.grupo}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">Ingresa una sola letra en mayúscula (A-Z)</p>
+            <p className="mt-1 text-xs text-gray-500">Ingresa el número del grupo</p>
           </div>
 
           {/* Programa (solo lectura) */}
@@ -302,7 +346,7 @@ const AulasForm: React.FC<AulasFormProps> = ({
                 <p className="font-semibold mb-2">Información sobre Aulas:</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li><strong>Grados:</strong> 4-5 (Inside Classroom) o 9-10 (Outside Classroom)</li>
-                  <li><strong>Grupo:</strong> Una letra (A-Z) que identifica la sección</li>
+                  <li><strong>Grupo:</strong> Número que identifica la sección</li>
                   <li><strong>Sede:</strong> Ubicación física donde se dictan las clases</li>
                 </ul>
               </div>

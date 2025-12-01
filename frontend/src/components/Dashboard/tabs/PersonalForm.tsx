@@ -9,18 +9,15 @@ interface PersonalFormProps {
   formData: Partial<Personal>;
   roles: Rol[];
   tiposDoc: TipoDocumento[];
-  formError: string | null;
-  isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSubmit: (formData: Partial<Personal>) => Promise<void>;
 }
 
 interface FieldErrors {
-  nombres?: string;
-  apellidos?: string;
+  nombre?: string;
+  apellido?: string;
   tipo_doc?: string;
-  num_doc?: string;
+  codigo?: string;
   correo?: string;
   telefono?: string;
   id_rol?: string;
@@ -33,38 +30,37 @@ const DOCUMENTO_PATTERN = /^[0-9]+$/;
 
 const PersonalForm: React.FC<PersonalFormProps> = ({
   isEditing,
-  formData,
+  formData: initialFormData,
   roles,
   tiposDoc,
-  formError,
-  isSubmitting,
   onClose,
   onSubmit,
-  onChange,
 }) => {
+  const [formData, setFormData] = useState<Partial<Personal>>(initialFormData);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validar campos individuales
   const validateField = (name: string, value: any) => {
     const errors: FieldErrors = { ...fieldErrors };
 
     switch (name) {
-      case 'nombres':
+      case 'nombre':
         if (!value || value.trim() === '') {
-          errors.nombres = 'Los nombres son obligatorios';
+          errors.nombre = 'El nombre es obligatorio';
         } else if (value.trim().length < 2) {
-          errors.nombres = 'Los nombres deben tener al menos 2 caracteres';
+          errors.nombre = 'El nombre debe tener al menos 2 caracteres';
         } else {
-          delete errors.nombres;
+          delete errors.nombre;
         }
         break;
-      case 'apellidos':
-        if (!value || value.trim() === '') {
-          errors.apellidos = 'Los apellidos son obligatorios';
-        } else if (value.trim().length < 2) {
-          errors.apellidos = 'Los apellidos deben tener al menos 2 caracteres';
+      case 'apellido':
+        // Apellido is optional
+        if (value && value.trim().length > 0 && value.trim().length < 2) {
+          errors.apellido = 'El apellido debe tener al menos 2 caracteres';
         } else {
-          delete errors.apellidos;
+          delete errors.apellido;
         }
         break;
       case 'tipo_doc':
@@ -74,15 +70,13 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
           delete errors.tipo_doc;
         }
         break;
-      case 'num_doc':
+      case 'codigo':
         if (!value || value.trim() === '') {
-          errors.num_doc = 'El número de documento es obligatorio';
-        } else if (!DOCUMENTO_PATTERN.test(value.trim())) {
-          errors.num_doc = 'El número de documento solo debe contener dígitos';
-        } else if (value.trim().length < 6) {
-          errors.num_doc = 'El número de documento debe tener al menos 6 dígitos';
+          errors.codigo = 'El código es obligatorio';
+        } else if (value.trim().length < 3) {
+          errors.codigo = 'El código debe tener al menos 3 caracteres';
         } else {
-          delete errors.num_doc;
+          delete errors.codigo;
         }
         break;
       case 'correo':
@@ -126,8 +120,39 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    onChange(e);
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'tipo_doc' || name === 'id_rol' ? Number(value) : value,
+    }));
     validateField(name, value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Validate all fields
+    const errors: string[] = [];
+    if (!formData.nombre || formData.nombre.trim() === '') errors.push('nombre');
+    if (!formData.tipo_doc || formData.tipo_doc === 0) errors.push('tipo_doc');
+    if (!formData.codigo || formData.codigo.trim() === '') errors.push('codigo');
+    if (!formData.correo || formData.correo.trim() === '') errors.push('correo');
+    if (!formData.id_rol || formData.id_rol === 0) errors.push('id_rol');
+
+    if (errors.length > 0) {
+      setFormError('Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      await onSubmit(formData);
+    } catch (error: any) {
+      setFormError(error.message || 'Error al guardar el personal');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -155,61 +180,59 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <p className="text-sm text-gray-600 mb-4">
             Registra administrativos y tutores del programa Global English.
           </p>
 
           {/* Grid de campos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nombres */}
+            {/* Nombre */}
             <div>
-              <label htmlFor="nombres" className="block text-sm font-semibold text-gray-700 mb-2">
-                Nombres <span className="text-red-500">*</span>
+              <label htmlFor="nombre" className="block text-sm font-semibold text-gray-700 mb-2">
+                Nombre <span className="text-red-500">*</span>
               </label>
               <input
-                id="nombres"
-                name="nombres"
+                id="nombre"
+                name="nombre"
                 type="text"
-                value={formData.nombres ?? ''}
+                value={formData.nombre ?? ''}
                 onChange={handleFieldChange}
-                placeholder="Ej: Mei Ching"
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.nombres
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                placeholder="Ej: Juan"
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.nombre
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               />
-              {fieldErrors.nombres && (
+              {fieldErrors.nombre && (
                 <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
                   <AlertCircle className="w-4 h-4" />
-                  {fieldErrors.nombres}
+                  {fieldErrors.nombre}
                 </p>
               )}
             </div>
 
-            {/* Apellidos */}
+            {/* Apellido */}
             <div>
-              <label htmlFor="apellidos" className="block text-sm font-semibold text-gray-700 mb-2">
-                Apellidos <span className="text-red-500">*</span>
+              <label htmlFor="apellido" className="block text-sm font-semibold text-gray-700 mb-2">
+                Apellido
               </label>
               <input
-                id="apellidos"
-                name="apellidos"
+                id="apellido"
+                name="apellido"
                 type="text"
-                value={formData.apellidos ?? ''}
+                value={formData.apellido ?? ''}
                 onChange={handleFieldChange}
                 placeholder="Ej: Pérez Torres"
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.apellidos
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.apellido
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               />
-              {fieldErrors.apellidos && (
+              {fieldErrors.apellido && (
                 <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
                   <AlertCircle className="w-4 h-4" />
-                  {fieldErrors.apellidos}
+                  {fieldErrors.apellido}
                 </p>
               )}
             </div>
@@ -224,11 +247,10 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
                 name="tipo_doc"
                 value={formData.tipo_doc ?? 0}
                 onChange={handleFieldChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.tipo_doc
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.tipo_doc
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               >
                 <option value={0} disabled>
                   Selecciona un tipo
@@ -247,28 +269,27 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
               )}
             </div>
 
-            {/* Número de documento */}
+            {/* Código */}
             <div>
-              <label htmlFor="num_doc" className="block text-sm font-semibold text-gray-700 mb-2">
-                Número de documento <span className="text-red-500">*</span>
+              <label htmlFor="codigo" className="block text-sm font-semibold text-gray-700 mb-2">
+                Código <span className="text-red-500">*</span>
               </label>
               <input
-                id="num_doc"
-                name="num_doc"
+                id="codigo"
+                name="codigo"
                 type="text"
-                value={formData.num_doc ?? ''}
+                value={formData.codigo ?? ''}
                 onChange={handleFieldChange}
-                placeholder="Ej: 1045678901"
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.num_doc
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                placeholder="Ej: 1048123123"
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.codigo
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               />
-              {fieldErrors.num_doc && (
+              {fieldErrors.codigo && (
                 <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
                   <AlertCircle className="w-4 h-4" />
-                  {fieldErrors.num_doc}
+                  {fieldErrors.codigo}
                 </p>
               )}
             </div>
@@ -285,11 +306,10 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
                 value={formData.correo ?? ''}
                 onChange={handleFieldChange}
                 placeholder="correo@ejemplo.com"
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.correo
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.correo
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               />
               {fieldErrors.correo && (
                 <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
@@ -311,11 +331,10 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
                 value={formData.telefono ?? ''}
                 onChange={handleFieldChange}
                 placeholder="Ej: 3001234567"
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.telefono
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.telefono
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               />
               {fieldErrors.telefono && (
                 <p className="mt-1 text-sm text-red-600 font-medium flex items-center gap-1">
@@ -336,11 +355,10 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
                 name="id_rol"
                 value={formData.id_rol ?? 0}
                 onChange={handleFieldChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  fieldErrors.id_rol
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${fieldErrors.id_rol
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
+                  }`}
               >
                 <option value={0} disabled>
                   Selecciona un rol
@@ -378,8 +396,9 @@ const PersonalForm: React.FC<PersonalFormProps> = ({
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>Todos los campos marcados con * son obligatorios</li>
                   <li>El correo debe ser válido (usuario@dominio.com)</li>
-                  <li>El documento debe tener al menos 6 dígitos</li>
+                  <li>El código debe tener al menos 3 caracteres</li>
                   <li>El teléfono es opcional pero debe tener mín. 7 dígitos</li>
+                  <li>El apellido es opcional</li>
                 </ul>
               </div>
             </div>

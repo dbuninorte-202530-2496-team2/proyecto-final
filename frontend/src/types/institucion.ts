@@ -4,7 +4,7 @@ export interface Institucion {
   id: number;
   nombre: string;
   correo: string;
-  jornada: string; 
+  jornada: Jornada;
   nombre_contacto: string;
   telefono_contacto: string;
 }
@@ -12,7 +12,7 @@ export interface Institucion {
 export interface InstitucionFormData {
   nombre: string;
   correo: string;
-  jornadas: Jornada[]; // En el form manejamos como array
+  jornada: Jornada;
   nombre_contacto: string;
   telefono_contacto: string;
 }

@@ -10,9 +10,9 @@ import {
 } from 'class-validator';
 
 export enum Jornada {
-  MAÑANA = 'MAÑANA',
-  TARDE = 'TARDE',
-  MIXTA = 'MIXTA',
+  UNICA_MANANA = 'UNICA_MANANA',
+  UNICA_TARDE = 'UNICA_TARDE',
+  MANANA_Y_TARDE = 'MANANA_Y_TARDE',
 }
 
 export class CreateInstitucionDto {
@@ -31,16 +31,15 @@ export class CreateInstitucionDto {
   @ApiProperty({
     description: 'Correo electrónico de la institución',
     example: 'contacto@colegiosanfrancisco.edu.co',
-    required: false,
   })
   @IsEmail()
-  @IsOptional()
+  @IsNotEmpty()
   correo: string;
 
   @ApiProperty({
     description: 'Jornada(s) de la institución',
     enum: Jornada,
-    example: 'MIXTA',
+    example: 'MANANA_Y_TARDE',
   })
   @IsEnum(Jornada)
   @IsNotEmpty()
@@ -49,22 +48,20 @@ export class CreateInstitucionDto {
   @ApiProperty({
     description: 'Nombre de la persona de contacto',
     example: 'María González',
-    required: false,
     maxLength: 100,
   })
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(100)
-  nombre_contacto?: string;
+  nombre_contacto: string;
 
   @ApiProperty({
     description: 'Teléfono de contacto',
     example: '+57 300 123 4567',
-    required: false,
     maxLength: 20,
   })
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(20)
-  telefono_contacto?: string;
+  telefono_contacto: string;
 }

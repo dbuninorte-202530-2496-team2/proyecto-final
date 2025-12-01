@@ -40,6 +40,7 @@ export class HorarioService {
                     'La duración del horario debe ser 40, 45, 50, 55 o 60 minutos'
                 );
             }
+            console.log(error)
             throw new InternalServerErrorException(
                 `Error al crear el horario: ${error.message}`
             );

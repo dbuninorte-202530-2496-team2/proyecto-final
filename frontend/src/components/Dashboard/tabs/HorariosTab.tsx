@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { Horario } from '../../../types/horario';
 import HorariosForm from './HorariosForm';
 import {
@@ -8,7 +8,8 @@ import {
   CardDescription,
   CardContent,
 } from '../../ui/Card';
-import { Search, Plus, Clock3, CalendarDays, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Clock3, CalendarDays, Trash2 } from 'lucide-react';
+import { horariosService } from '../../../services/api';
 
 type DiaFilter = 'all' | 'LU' | 'MA' | 'MI' | 'JU' | 'VI' | 'SA';
 
@@ -39,12 +40,12 @@ const MOCK_HORARIOS: Horario[] = [
 ];
 
 const HorariosTab: React.FC = () => {
-  const [horarios, setHorarios] = useState<Horario[]>(MOCK_HORARIOS);
+  const [horarios, setHorarios] = useState<Horario[]>([]);
+  const [loading, setLoading] = useState(true);
   const [diaFilter, setDiaFilter] = useState<DiaFilter>('all');
   const [search, setSearch] = useState('');
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<
     Partial<Horario & { _duracionLabel?: string }>
   >({
@@ -55,6 +56,23 @@ const HorariosTab: React.FC = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const horariosData = await horariosService.getAll();
+      setHorarios(horariosData);
+    } catch (error) {
+      console.error('Error al cargar horarios:', error);
+      alert('Error al cargar los horarios del servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtros y búsqueda
   const horariosFiltrados = useMemo(() => {
@@ -89,24 +107,12 @@ const HorariosTab: React.FC = () => {
       hora_ini: '',
       hora_fin: '',
     };
-    setIsEditing(false);
     setFormData({
       ...base,
       _duracionLabel: recomputeDuracionLabel(base),
     });
     setFormError(null);
     setIsFormOpen(true);
-  };
-
-  const openEditForm = (h: Horario) => {
-    setIsEditing(true);
-    setFormError(null);
-    setIsFormOpen(true);
-
-    setFormData({
-      ...h,
-      _duracionLabel: recomputeDuracionLabel(h),
-    });
   };
 
   const closeForm = () => {
@@ -141,7 +147,7 @@ const HorariosTab: React.FC = () => {
     return null;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const error = validateForm();
     if (error) {
@@ -151,33 +157,33 @@ const HorariosTab: React.FC = () => {
 
     setIsSubmitting(true);
 
-    const payload: Horario = {
-      id: formData.id ?? -1,
-      dia_sem: formData.dia_sem as any,
-      hora_ini: formData.hora_ini as string,
-      hora_fin: formData.hora_fin as string,
-    };
-
-    if (isEditing && formData.id != null) {
-      setHorarios((prev) =>
-        prev.map((h) => (h.id === formData.id ? payload : h)),
-      );
-    } else {
-      const newId =
-        horarios.length > 0
-          ? Math.max(...horarios.map((h) => h.id)) + 1
-          : 1;
-      payload.id = newId;
-      setHorarios((prev) => [...prev, payload]);
+    try {
+      // Construct clean payload with ONLY required fields
+      const payload = {
+        dia_sem: formData.dia_sem as string,
+        hora_ini: formData.hora_ini as string,
+        hora_fin: formData.hora_fin as string,
+      };
+      console.log('Sending horario payload:', payload);
+      await horariosService.create(payload);
+      closeForm();
+      fetchData();
+    } catch (error) {
+      console.error('Error al guardar horario:', error);
+      setFormError('Error al guardar el horario');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    closeForm();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('¿Seguro que deseas eliminar este horario?')) return;
-    setHorarios((prev) => prev.filter((h) => h.id !== id));
+    try {
+      await horariosService.delete(id);
+      setHorarios((prev) => prev.filter((h) => h.id !== id));
+    } catch (error) {
+      console.error('Error al eliminar horario:', error);
+    }
   };
 
   // Resúmenes
@@ -315,24 +321,16 @@ const HorariosTab: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                            valido
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${valido
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                            }`}
                         >
                           {mins} min{!valido && ' (fuera de rango)'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => openEditForm(h)}
-                            className="p-2 hover:bg-amber-100 rounded-lg transition-all text-amber-600 hover:text-amber-700 font-semibold transform hover:scale-110 duration-150"
-                            title="Editar"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
                           <button
                             onClick={() => handleDelete(h.id)}
                             className="p-2 hover:bg-red-100 rounded-lg transition-all text-red-600 hover:text-red-700 font-semibold transform hover:scale-110 duration-150"
@@ -406,7 +404,7 @@ const HorariosTab: React.FC = () => {
 
       {isFormOpen && (
         <HorariosForm
-          isEditing={isEditing}
+          isEditing={false}
           formData={formData}
           formError={formError}
           isSubmitting={isSubmitting}

@@ -5,6 +5,9 @@ import type { Institucion } from '../../../types/institucion';
 import type { Sede } from '../../../types/sede';
 import AulasForm, { type InstitucionIdFilter } from './AulasForm';
 import { Search, Plus, Edit2, Trash2, Zap } from 'lucide-react';
+import { aulasService } from '../../../services/api/aulas.service';
+import { sedesService } from '../../../services/api/sedes.service';
+import { institucionesService } from '../../../services/api/instituciones.service';
 
 type SedeIdFilter = number | 'all';
 
@@ -29,64 +32,18 @@ export function AulasTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Datos de ejemplo de instituciones
-      const mockInstituciones: Institucion[] = [
-        {
-          id: 1,
-          nombre: 'IED Simón Bolívar',
-          correo: 'contacto@simonbolivar.edu.co',
-          jornada: 'Mañana y Tarde',
-          nombre_contacto: 'María González',
-          telefono_contacto: '3001234567',
-        },
-        {
-          id: 2,
-          nombre: 'IED José Martí',
-          correo: 'info@josemarti.edu.co',
-          jornada: 'Única Mañana',
-          nombre_contacto: 'Carlos Pérez',
-          telefono_contacto: '3009876543',
-        },
-      ];
+      const [institucionesData, sedesData, aulasData] = await Promise.all([
+        institucionesService.getAll(),
+        sedesService.getAll(),
+        aulasService.getAll()
+      ]);
 
-      // Datos de ejemplo de sedes
-      const mockSedes: Sede[] = [
-        {
-          id: 1,
-          nombre: 'Sede Principal',
-          direccion: 'Calle 50 #20-30, Barranquilla',
-          id_inst: 1,
-          is_principal: true,
-        },
-        {
-          id: 2,
-          nombre: 'Sede Norte',
-          direccion: 'Carrera 45 #80-15, Barranquilla',
-          id_inst: 1,
-          is_principal: false,
-        },
-        {
-          id: 3,
-          nombre: 'Sede Principal',
-          direccion: 'Carrera 38 #70-25, Barranquilla',
-          id_inst: 2,
-          is_principal: true,
-        },
-      ];
-
-      // Datos de ejemplo de aulas
-      const mockAulas: Aula[] = [
-        { id: 1, grado: 4, grupo: 'A', id_sede: 1 },
-        { id: 2, grado: 5, grupo: 'B', id_sede: 1 },
-        { id: 3, grado: 9, grupo: 'A', id_sede: 2 },
-        { id: 4, grado: 10, grupo: 'A', id_sede: 3 },
-      ];
-
-      setInstituciones(mockInstituciones);
-      setSedes(mockSedes);
-      setAulas(mockAulas);
+      setInstituciones(institucionesData);
+      setSedes(sedesData);
+      setAulas(aulasData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
+      // Error toast is handled automatically by API client
     } finally {
       setLoading(false);
     }
@@ -111,11 +68,12 @@ export function AulasTab() {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta aula?')) {
       try {
-        setAulas(aulas.filter(a => a.id !== id));
-        alert('Aula eliminada exitosamente');
+        await aulasService.delete(id);
+        // Success toast is shown automatically by API client
+        fetchData();
       } catch (error) {
         console.error('Error al eliminar aula:', error);
-        alert('Error al eliminar la aula');
+        // Error toast is shown automatically by API client
       }
     }
   };
@@ -126,8 +84,8 @@ export function AulasTab() {
     fetchData();
   };
 
-  const sedesFiltradasPorInstitucion = filterInstitucion === 'all' 
-    ? sedes 
+  const sedesFiltradasPorInstitucion = filterInstitucion === 'all'
+    ? sedes
     : sedes.filter(s => s.id_inst === filterInstitucion);
 
   const filteredAulas = aulas.filter(aula => {
@@ -140,7 +98,7 @@ export function AulasTab() {
     const termino = searchTerm.toLowerCase().trim();
     const matchesSearch =
       termino === '' ||
-      aula.grupo.toLowerCase().includes(termino) ||
+      aula.grupo.toString().includes(termino) ||
       (sede?.nombre || '').toLowerCase().includes(termino) ||
       (institucion?.nombre || '').toLowerCase().includes(termino) ||
       aula.grado.toString().includes(termino);
@@ -174,7 +132,7 @@ export function AulasTab() {
               Gestión de aulas, grados y asignación de sedes
             </CardDescription>
           </div>
-          <button 
+          <button
             onClick={handleCreate}
             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md transform hover:scale-105 duration-200"
           >
@@ -183,7 +141,7 @@ export function AulasTab() {
           </button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="text-center py-12">
@@ -313,11 +271,10 @@ export function AulasTab() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                            getPrograma(aula.grado) === 'INSIDECLASSROOM'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-indigo-100 text-indigo-800'
-                          }`}>
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getPrograma(aula.grado) === 'INSIDECLASSROOM'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-indigo-100 text-indigo-800'
+                            }`}>
                             {getPrograma(aula.grado) === 'INSIDECLASSROOM' ? 'Inside' : 'Outside'}
                           </span>
                         </td>
@@ -359,9 +316,7 @@ export function AulasTab() {
           formError={null}
           isSubmitting={false}
           onClose={handleFormClose}
-          onSubmit={() => handleFormClose()}
-          onChange={() => {}}
-          onChangeInstitucion={() => {}}
+        // Removed props that are no longer needed as AulasForm handles submission internally
         />
       )}
     </Card>

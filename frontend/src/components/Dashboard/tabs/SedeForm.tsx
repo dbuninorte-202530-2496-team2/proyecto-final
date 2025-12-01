@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Building2, MapPin, Star } from 'lucide-react';
-import type { Sede, SedeFormData } from '../../../types/sede';
+import type { Sede, SedeFormData, CreateSedeDto, UpdateSedeDto } from '../../../types/sede';
 import type { Institucion } from '../../../types/institucion';
+import { sedesService } from '../../../services/api/sedes.service';
 
 interface SedeFormProps {
   sede: Sede | null;
@@ -33,17 +34,17 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: name === 'id_inst' ? Number(value) : value 
+      setFormData(prev => ({
+        ...prev,
+        [name]: name === 'id_inst' ? Number(value) : value
       }));
     }
-    
+
     if (errors[name as keyof SedeFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
@@ -58,14 +59,14 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
     } else if (formData.nombre.trim().length < 3) {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres';
     }
-    
+
     // Dirección validation
     if (!formData.direccion.trim()) {
       newErrors.direccion = 'La dirección es requerida';
     } else if (formData.direccion.trim().length < 5) {
       newErrors.direccion = 'La dirección debe tener al menos 5 caracteres';
     }
-    
+
     // Institución validation
     if (!formData.id_inst || formData.id_inst === 0) {
       newErrors.id_inst = 'Debe seleccionar una institución';
@@ -81,24 +82,42 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
 
     setSubmitting(true);
     try {
+      if (sede) {
+        // Update existing sede
+        const updateData: UpdateSedeDto = {
+          nombre: formData.nombre,
+          direccion: formData.direccion,
+          // id_inst cannot be changed
+          is_principal: formData.is_principal
+        };
+        await sedesService.update(sede.id, updateData);
+      } else {
+        // Create new sede
+        const createData: CreateSedeDto = {
+          nombre: formData.nombre,
+          direccion: formData.direccion,
+          id_inst: formData.id_inst,
+          is_principal: formData.is_principal
+        };
+        await sedesService.create(createData);
+      }
 
-      console.log('Datos a enviar:', formData);
-      alert(`Sede ${sede ? 'actualizada' : 'creada'} exitosamente`);
+      // Success toast is handled automatically by API client
       onClose();
     } catch (error) {
       console.error('Error al guardar sede:', error);
-      alert('Error al guardar la sede');
+      // Error toast is handled automatically by API client
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scaleIn border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
@@ -130,13 +149,12 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
               value={formData.id_inst}
               onChange={handleInputChange}
               disabled={!!sede} // No permitir cambiar la institución al editar
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                sede
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${sede
                   ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-                  : errors.id_inst 
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+                  : errors.id_inst
+                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                     : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               required
             >
               <option value={0}>Seleccione una institución</option>
@@ -165,11 +183,10 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
               name="nombre"
               value={formData.nombre}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                errors.nombre 
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.nombre
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               placeholder="Ej: Sede Principal, Sede Norte, Sede Sur..."
               required
             />
@@ -190,11 +207,10 @@ export default function SedeForm({ sede, instituciones, onClose }: SedeFormProps
               value={formData.direccion}
               onChange={handleInputChange}
               rows={3}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all resize-none ${
-                errors.direccion 
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all resize-none ${errors.direccion
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               placeholder="Ej: Calle 50 #20-30, Barranquilla, Atlántico"
               required
             />

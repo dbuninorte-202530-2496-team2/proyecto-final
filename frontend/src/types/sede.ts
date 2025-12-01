@@ -14,5 +14,19 @@ export interface SedeFormData {
 }
 
 export interface SedeConInstitucion extends Sede {
-  nombreInstitucion?: string;
+  institucion_nombre?: string;
+}
+
+export interface CreateSedeDto {
+  nombre: string;
+  direccion?: string;
+  id_inst: number;
+  is_principal: boolean;
+}
+
+export interface UpdateSedeDto {
+  nombre?: string;
+  direccion?: string;
+  id_inst?: number;
+  is_principal?: boolean;
 }

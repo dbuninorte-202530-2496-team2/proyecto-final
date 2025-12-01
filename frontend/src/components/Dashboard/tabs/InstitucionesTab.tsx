@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../ui/Card';
 import type { Institucion } from '../../../types/institucion';
-import { jornadaStringToArray } from '../../../types/institucion';
 import InstitucionForm from './InstitucionesForm';
 import { Search, Plus, Edit2, Trash2, Eye } from 'lucide-react';
+import { institucionesService } from '../../../services/api/instituciones.service';
 
 export function InstitucionesTab() {
   const [instituciones, setInstituciones] = useState<Institucion[]>([]);
@@ -19,29 +19,11 @@ export function InstitucionesTab() {
   const fetchInstituciones = async () => {
     setLoading(true);
     try {
-      // Datos de prueba
-      const mockData: Institucion[] = [
-        {
-          id: 1,
-          nombre: 'IED Simón Bolívar',
-          correo: 'contacto@simonbolivar.edu.co',
-          jornada: 'MANANA_Y_TARDE',
-          nombre_contacto: 'María González',
-          telefono_contacto: '3001234567'
-        },
-        {
-          id: 2,
-          nombre: 'IED José Martí',
-          correo: 'info@josemarti.edu.co',
-          jornada: 'UNICA_MANANA',
-          nombre_contacto: 'Carlos Pérez',
-          telefono_contacto: '3009876543'
-        }
-      ];
-      
-      setInstituciones(mockData);
+      const data = await institucionesService.getAll();
+      setInstituciones(data);
     } catch (error) {
       console.error('Error al cargar instituciones:', error);
+      // Error toast is handled automatically by API client
     } finally {
       setLoading(false);
     }
@@ -60,11 +42,12 @@ export function InstitucionesTab() {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta institución?')) {
       try {
-        setInstituciones(instituciones.filter(inst => inst.id !== id));
-        alert('Institución eliminada exitosamente');
+        await institucionesService.delete(id);
+        // Success toast is shown automatically by API client
+        fetchInstituciones(); // Refresh list
       } catch (error) {
         console.error('Error al eliminar institución:', error);
-        alert('Error al eliminar la institución');
+        // Error toast is shown automatically by API client
       }
     }
   };
@@ -75,16 +58,13 @@ export function InstitucionesTab() {
     fetchInstituciones();
   };
 
-  const getJornadaText = (jornadaStr: string) => {
-    const jornadas = jornadaStringToArray(jornadaStr);
-    return jornadas.map(j => {
-      switch(j) {
-        case 'UNICA_MANANA': return 'Única Mañana';
-        case 'UNICA_TARDE': return 'Única Tarde';
-        case 'MANANA_Y_TARDE': return 'Mañana y Tarde';
-        default: return j;
-      }
-    }).join(', ');
+  const getJornadaText = (jornada: string) => {
+    switch (jornada) {
+      case 'UNICA_MANANA': return 'Única Mañana';
+      case 'UNICA_TARDE': return 'Única Tarde';
+      case 'MANANA_Y_TARDE': return 'Mañana y Tarde';
+      default: return jornada;
+    }
   };
 
   const filteredInstituciones = instituciones.filter(inst =>
@@ -102,7 +82,7 @@ export function InstitucionesTab() {
               Gestión de las instituciones invitadas al programa GlobalEnglish
             </CardDescription>
           </div>
-          <button 
+          <button
             onClick={handleCreate}
             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md"
           >
@@ -111,7 +91,7 @@ export function InstitucionesTab() {
           </button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="text-center py-12">
@@ -167,7 +147,7 @@ export function InstitucionesTab() {
                   {filteredInstituciones.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-gray-500 italic">
-                        {searchTerm 
+                        {searchTerm
                           ? 'No se encontraron instituciones con ese criterio de búsqueda'
                           : 'No hay instituciones registradas. Haz clic en "Invitar Institución" para comenzar.'
                         }
@@ -197,7 +177,7 @@ export function InstitucionesTab() {
                         <td className="px-4 py-3 text-sm">
                           <div className="flex justify-center gap-1">
                             <button
-                              onClick={() => {/* TODO: Vista detalle */}}
+                              onClick={() => {/* TODO: Vista detalle */ }}
                               className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700"
                               title="Ver detalles"
                             >

@@ -24,6 +24,20 @@ export class SedesService {
       // Verificar que la institución existe
       await this.institucionesService.findOne(id_inst);
 
+      // Si es principal, verificar que no exista otra principal para esta institución
+      if (is_principal) {
+        const principalExistente = await this.pool.query(
+          `SELECT id FROM sede WHERE id_inst = $1 AND is_principal = true`,
+          [id_inst]
+        );
+
+        if (principalExistente.rows.length > 0) {
+          throw new BadRequestException(
+            'Ya existe una sede principal para esta institución. Solo puede haber una.'
+          );
+        }
+      }
+
       const result = await this.pool.query(
         `INSERT INTO sede (nombre, direccion, id_inst, is_principal) 
          VALUES ($1, $2, $3, $4) 
@@ -91,7 +105,6 @@ export class SedesService {
 
       return result.rows;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
@@ -100,11 +113,30 @@ export class SedesService {
     const { nombre, direccion, id_inst, is_principal } = updateSedeDto;
 
     try {
-      await this.findOne(id);
+      const currentSede = await this.findOne(id);
+      const targetInstId = id_inst || currentSede.id_inst;
 
       // Si se va a cambiar de institución, verificar que existe
       if (id_inst) {
         await this.institucionesService.findOne(id_inst);
+      }
+
+      // Si se marca como principal, verificar unicidad
+      // (Solo si cambia a true, o si cambia de institución siendo true)
+      const isBecomingPrincipal = is_principal === true && !currentSede.is_principal;
+      const isMovingInstitutionAsPrincipal = (is_principal === true || (is_principal === undefined && currentSede.is_principal)) && id_inst && id_inst !== currentSede.id_inst;
+
+      if (isBecomingPrincipal || isMovingInstitutionAsPrincipal) {
+        const principalExistente = await this.pool.query(
+          `SELECT id FROM sede WHERE id_inst = $1 AND is_principal = true AND id != $2`,
+          [targetInstId, id]
+        );
+
+        if (principalExistente.rows.length > 0) {
+          throw new BadRequestException(
+            'Ya existe una sede principal para esta institución.'
+          );
+        }
       }
 
       const result = await this.pool.query(
@@ -120,28 +152,34 @@ export class SedesService {
 
       return result.rows[0];
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
 
   async remove(id: number) {
     try {
-      await this.findOne(id);
+      const sede = await this.findOne(id);
+
+      if (sede.is_principal) {
+        throw new BadRequestException(
+          'No se puede eliminar la sede principal. Debe asignar otra sede como principal antes de eliminar esta.',
+        );
+      }
+
       await this.pool.query(`DELETE FROM sede WHERE id = $1`, [id]);
 
       return { message: `Sede con id ${id} eliminada correctamente` };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
 
   private handleDBExceptions(error: any): never {
-    console.error(error);
+    if (error instanceof BadRequestException) throw error;
+    if (error instanceof NotFoundException) throw error;
 
     if (error.code === '23505') {
-      throw new BadRequestException('Ya existe una sede con este identificador');
+      throw new BadRequestException('Ya existe una sede con este nombre en la institución');
     }
 
     if (error.code === '23503') {
@@ -150,6 +188,7 @@ export class SedesService {
       );
     }
 
+    console.error(error);
     throw new InternalServerErrorException(
       'Error inesperado, revisa los logs del servidor',
     );

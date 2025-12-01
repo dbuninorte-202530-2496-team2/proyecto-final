@@ -5,6 +5,7 @@ import type { Rol } from '../../../types/rol';
 import type { TipoDocumento } from '../../../types/tipoDocumento';
 import PersonalForm from './PersonalForm';
 import { Search, Plus, Edit2, Trash2, Users } from 'lucide-react';
+import { personalService, rolesService, tipoDocumentoService } from '../../../services/api';
 
 export function PersonalTab() {
   const [personal, setPersonal] = useState<Personal[]>([]);
@@ -23,58 +24,18 @@ export function PersonalTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Datos de ejemplo de roles
-      const mockRoles: Rol[] = [
-        { id: 1, nombre: 'ADMINISTRATIVO', descripcion: 'Gestiona la operación del programa' },
-        { id: 2, nombre: 'TUTOR', descripcion: 'Imparte clases y registra notas/asistencias' },
-      ];
+      const [rolesData, tiposDocData, personalData] = await Promise.all([
+        rolesService.getAll(),
+        tipoDocumentoService.getAll(),
+        personalService.getAll(),
+      ]);
 
-      // Datos de ejemplo de tipos de documento
-      const mockTiposDoc: TipoDocumento[] = [
-        { id: 1, nombre: 'Cédula de ciudadanía', sigla: 'CC' },
-        { id: 2, nombre: 'Tarjeta de identidad', sigla: 'TI' },
-        { id: 3, nombre: 'Cédula de extranjería', sigla: 'CE' },
-      ];
-
-      // Datos de ejemplo de personal
-      const mockPersonal: Personal[] = [
-        {
-          id: 1,
-          nombres: 'Mei',
-          apellidos: 'Ching',
-          correo: 'mei.ching@uninorte.edu.co',
-          telefono: '3001112233',
-          tipo_doc: 2,
-          num_doc: '1045678901',
-          id_rol: 1,
-        },
-        {
-          id: 2,
-          nombres: 'Laura',
-          apellidos: 'Rodríguez',
-          correo: 'laura.rod@globalenglish.edu.co',
-          telefono: '3002223344',
-          tipo_doc: 1,
-          num_doc: '1012345678',
-          id_rol: 2,
-        },
-        {
-          id: 3,
-          nombres: 'Carlos',
-          apellidos: 'Martínez',
-          correo: 'carlos.mtz@globalenglish.edu.co',
-          telefono: '3003334455',
-          tipo_doc: 1,
-          num_doc: '1009876543',
-          id_rol: 2,
-        },
-      ];
-
-      setRoles(mockRoles);
-      setTiposDoc(mockTiposDoc);
-      setPersonal(mockPersonal);
+      setRoles(rolesData);
+      setTiposDoc(tiposDocData);
+      setPersonal(personalData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
+      alert('Error al cargar los datos del servidor');
     } finally {
       setLoading(false);
     }
@@ -93,12 +54,29 @@ export function PersonalTab() {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar este personal?')) {
       try {
+        await personalService.delete(id);
         setPersonal(personal.filter(p => p.id !== id));
-        alert('Personal eliminado exitosamente');
       } catch (error) {
         console.error('Error al eliminar personal:', error);
-        alert('Error al eliminar el personal');
       }
+    }
+  };
+
+  const handleFormSubmit = async (formData: Partial<Personal>) => {
+    try {
+      if (selectedPersonal) {
+        // Update existing personal
+        const { id, ...updateData } = formData;
+        await personalService.update(selectedPersonal.id, updateData);
+      } else {
+        // Create new personal
+        const { id, ...createData } = formData as any;
+        await personalService.create(createData);
+      }
+      handleFormClose();
+    } catch (error: any) {
+      console.error('Error al guardar personal:', error);
+      // Error is handled by api-client interceptor
     }
   };
 
@@ -111,15 +89,15 @@ export function PersonalTab() {
   const filteredPersonal = personal.filter(p => {
     const rol = roles.find(r => r.id === p.id_rol);
 
-    const matchesSearch = 
-      p.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.apellido || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.num_doc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (rol?.nombre.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterRol === '' || p.id_rol === filterRol;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -144,7 +122,7 @@ export function PersonalTab() {
               Gestión de administrativos y tutores del programa
             </CardDescription>
           </div>
-          <button 
+          <button
             onClick={handleCreate}
             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md transform hover:scale-105 duration-200"
           >
@@ -153,7 +131,7 @@ export function PersonalTab() {
           </button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="text-center py-12">
@@ -176,7 +154,7 @@ export function PersonalTab() {
                   className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all hover:border-green-300"
                 />
               </div>
-              
+
               <select
                 value={filterRol}
                 onChange={(e) => setFilterRol(e.target.value === '' ? '' : Number(e.target.value))}
@@ -235,10 +213,10 @@ export function PersonalTab() {
                           {p.id}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {p.nombres} {p.apellidos}
+                          {p.nombre} {p.apellido || ''}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {getTipoDocSigla(p.tipo_doc)} - {p.num_doc}
+                          {getTipoDocSigla(p.tipo_doc)} - {p.codigo}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {p.correo}
@@ -247,11 +225,10 @@ export function PersonalTab() {
                           {p.telefono || '—'}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                            p.id_rol === 1
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${p.id_rol === 1
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-blue-100 text-blue-800'
+                            }`}>
                             {getRolName(p.id_rol)}
                           </span>
                         </td>
@@ -289,11 +266,8 @@ export function PersonalTab() {
           formData={selectedPersonal ?? {}}
           roles={roles}
           tiposDoc={tiposDoc}
-          formError={null}
-          isSubmitting={false}
           onClose={handleFormClose}
-          onSubmit={() => handleFormClose()}
-          onChange={() => {}}
+          onSubmit={handleFormSubmit}
         />
       )}
     </Card>

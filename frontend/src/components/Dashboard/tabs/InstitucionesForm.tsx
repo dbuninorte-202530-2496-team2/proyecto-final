@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Institucion, InstitucionFormData, Jornada } from '../../../types/institucion';
-import { jornadaArrayToString, jornadaStringToArray } from '../../../types/institucion';
+import { institucionesService } from '../../../services/api/instituciones.service';
 
 // validación de telefono
 const TELEFONO_PATTERN = /^[0-9\s\-\+()]+$/;
@@ -16,7 +16,7 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
   const [formData, setFormData] = useState<InstitucionFormData>({
     nombre: '',
     correo: '',
-    jornadas: [],
+    jornada: 'UNICA_MANANA',
     nombre_contacto: '',
     telefono_contacto: ''
   });
@@ -29,7 +29,7 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
       setFormData({
         nombre: institucion.nombre,
         correo: institucion.correo,
-        jornadas: jornadaStringToArray(institucion.jornada),
+        jornada: institucion.jornada,
         nombre_contacto: institucion.nombre_contacto,
         telefono_contacto: institucion.telefono_contacto
       });
@@ -45,15 +45,9 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
   };
 
   const handleJornadaChange = (jornada: Jornada) => {
-    setFormData(prev => {
-      const jornadas = prev.jornadas.includes(jornada)
-        ? prev.jornadas.filter(j => j !== jornada)
-        : [...prev.jornadas, jornada];
-      return { ...prev, jornadas };
-    });
-
-    if (errors.jornadas) {
-      setErrors(prev => ({ ...prev, jornadas: undefined }));
+    setFormData(prev => ({ ...prev, jornada }));
+    if (errors.jornada) {
+      setErrors(prev => ({ ...prev, jornada: undefined }));
     }
   };
 
@@ -66,26 +60,26 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
     } else if (formData.nombre.trim().length < 3) {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres';
     }
-    
+
     // validación del email
     if (!formData.correo.trim()) {
       newErrors.correo = 'El correo es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       newErrors.correo = 'El correo no es válido (ej: usuario@dominio.com)';
     }
-    
-    // validación de las jornadas
-    if (formData.jornadas.length === 0) {
-      newErrors.jornadas = 'Debe seleccionar al menos una jornada';
+
+    // validación de jornada
+    if (!formData.jornada) {
+      newErrors.jornada = 'Debe seleccionar una jornada';
     }
-    
+
     // validación del nombre de contacto
     if (!formData.nombre_contacto.trim()) {
       newErrors.nombre_contacto = 'El nombre de contacto es requerido';
     } else if (formData.nombre_contacto.trim().length < 2) {
       newErrors.nombre_contacto = 'El nombre de contacto debe tener al menos 2 caracteres';
     }
-    
+
     // validación del teléfono 
     if (!formData.telefono_contacto.trim()) {
       newErrors.telefono_contacto = 'El teléfono es requerido';
@@ -108,32 +102,29 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
 
     setSubmitting(true);
     try {
-      // Convertir jornadas array a string para enviar a la BD
-      const dataToSend = {
-        nombre: formData.nombre,
-        correo: formData.correo,
-        jornada: jornadaArrayToString(formData.jornadas),
-        nombre_contacto: formData.nombre_contacto,
-        telefono_contacto: formData.telefono_contacto
-      };
-
-      console.log('Datos a enviar:', dataToSend);
-      alert(`Institución ${institucion ? 'actualizada' : 'creada'} exitosamente`);
+      if (institucion) {
+        // Update existing
+        await institucionesService.update(institucion.id, formData);
+      } else {
+        // Create new
+        await institucionesService.create(formData);
+      }
+      // Success toast is shown automatically by API client
       onClose();
     } catch (error) {
       console.error('Error al guardar institución:', error);
-      alert('Error al guardar la institución');
+      // Error toast is shown automatically by API client
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scaleIn border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
@@ -164,11 +155,10 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
               name="nombre"
               value={formData.nombre}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                errors.nombre 
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.nombre
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               placeholder="Ej: IED Simón Bolívar"
               required
             />
@@ -188,11 +178,10 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
               name="correo"
               value={formData.correo}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                errors.correo 
-                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.correo
+                  ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                   : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-              }`}
+                }`}
               placeholder="Ej: contacto@institucion.edu.co"
               required
             />
@@ -201,10 +190,10 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
             )}
           </div>
 
-          {/* Jornadas */}
+          {/* Jornada */}
           <div className="mb-4">
             <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Jornada(s) <span className="text-red-500">*</span>
+              Jornada <span className="text-red-500">*</span>
             </label>
             <div className="space-y-2">
               {[
@@ -212,23 +201,23 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
                 { value: 'UNICA_TARDE' as Jornada, label: 'Única Tarde' },
                 { value: 'MANANA_Y_TARDE' as Jornada, label: 'Mañana y Tarde' }
               ].map(({ value, label }) => (
-                <label key={value} className={`flex items-center p-3 hover:bg-green-50 rounded-lg cursor-pointer border transition-all ${
-                  errors.jornadas 
-                    ? 'border-red-300 bg-red-50' 
+                <label key={value} className={`flex items-center p-3 hover:bg-green-50 rounded-lg cursor-pointer border transition-all ${errors.jornada
+                    ? 'border-red-300 bg-red-50'
                     : 'border-gray-200 hover:border-green-300'
-                }`}>
+                  }`}>
                   <input
-                    type="checkbox"
-                    checked={formData.jornadas.includes(value)}
+                    type="radio"
+                    name="jornada"
+                    checked={formData.jornada === value}
                     onChange={() => handleJornadaChange(value)}
-                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                    className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
                   />
                   <span className="ml-3 text-sm font-medium text-gray-700">{label}</span>
                 </label>
               ))}
             </div>
-            {errors.jornadas && (
-              <p className="mt-2 text-sm text-red-600 font-medium">{errors.jornadas}</p>
+            {errors.jornada && (
+              <p className="mt-2 text-sm text-red-600 font-medium">{errors.jornada}</p>
             )}
           </div>
 
@@ -244,11 +233,10 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
                 name="nombre_contacto"
                 value={formData.nombre_contacto}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  errors.nombre_contacto 
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.nombre_contacto
+                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                     : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                  }`}
                 placeholder="Ej: María González"
                 required
               />
@@ -267,11 +255,10 @@ export default function InstitucionForm({ institucion, onClose }: InstitucionFor
                 name="telefono_contacto"
                 value={formData.telefono_contacto}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                  errors.telefono_contacto 
-                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500' 
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.telefono_contacto
+                    ? 'border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500'
                     : 'border-gray-300 focus:ring-green-200 focus:border-green-500 hover:border-green-300'
-                }`}
+                  }`}
                 placeholder="Ej: 3001234567"
                 required
               />

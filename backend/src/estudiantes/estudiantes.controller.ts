@@ -15,6 +15,8 @@ import { EstudiantesService } from './estudiantes.service';
 import { CreateEstudianteDto } from './dto/create-estudiante.dto';
 import { UpdateEstudianteDto } from './dto/update-estudiante.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
+import { AsignarAulaDto } from './dto/asignar-aula.dto';
+import { MoverAulaDto } from './dto/mover-aula.dto';
 import { EstudianteEntity } from './entities/estudiante.entity';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
@@ -22,7 +24,7 @@ import { ValidRoles } from '../auth/interfaces';
 @ApiTags('Estudiantes')
 @Controller('estudiantes')
 export class EstudiantesController {
-  constructor(private readonly estudiantesService: EstudiantesService) {}
+  constructor(private readonly estudiantesService: EstudiantesService) { }
 
   @Get()
   @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO, ValidRoles.TUTOR)
@@ -76,5 +78,38 @@ export class EstudiantesController {
   @ApiResponse({ status: 200, description: 'Scores actualizados', type: EstudianteEntity })
   updateScores(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateScoreDto) {
     return this.estudiantesService.updateScores(id, dto);
+  }
+
+  // Endpoints para gestión de aulas
+
+  @Get(':id/aula-actual')
+  @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO, ValidRoles.TUTOR)
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiOperation({ summary: 'Obtener aula actual del estudiante' })
+  @ApiResponse({ status: 200, description: 'Aula actual obtenida' })
+  obtenerAulaActual(@Param('id', ParseIntPipe) id: number) {
+    return this.estudiantesService.obtenerAulaActual(id);
+  }
+
+  @Post(':id/asignar-aula')
+  @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiOperation({ summary: 'Asignar estudiante a un aula (usa sp_asignar_estudiante_aula)' })
+  @ApiResponse({ status: 200, description: 'Estudiante asignado al aula' })
+  @ApiResponse({ status: 400, description: 'Error: estudiante ya tiene aula asignada' })
+  asignarAula(@Param('id', ParseIntPipe) id: number, @Body() dto: AsignarAulaDto) {
+    return this.estudiantesService.asignarAula(id, dto.id_aula, dto.fecha_asignado);
+  }
+
+  @Post(':id/mover-aula')
+  @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({ name: 'id', example: 15 })
+  @ApiOperation({ summary: 'Mover estudiante entre aulas (usa sp_mover_estudiante_aula)' })
+  @ApiResponse({ status: 200, description: 'Estudiante movido al aula destino' })
+  @ApiResponse({ status: 400, description: 'Error: grados incompatibles o estudiante sin aula' })
+  moverAula(@Param('id', ParseIntPipe) id: number, @Body() dto: MoverAulaDto) {
+    return this.estudiantesService.moverAula(id, dto.id_aula_destino, dto.fecha_movimiento);
   }
 }

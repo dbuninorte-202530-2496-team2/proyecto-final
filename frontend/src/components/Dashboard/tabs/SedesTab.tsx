@@ -4,6 +4,8 @@ import type { SedeConInstitucion } from '../../../types/sede';
 import type { Institucion } from '../../../types/institucion';
 import SedeForm from './SedeForm';
 import { Search, Plus, Edit2, Trash2, Eye, Building2, MapPin, Star } from 'lucide-react';
+import { sedesService } from '../../../services/api/sedes.service';
+import { institucionesService } from '../../../services/api/instituciones.service';
 
 export function SedesTab() {
   const [sedes, setSedes] = useState<SedeConInstitucion[]>([]);
@@ -21,59 +23,16 @@ export function SedesTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-  
-      // Datos de ejemplo de instituciones
-      const mockInstituciones: Institucion[] = [
-        {
-          id: 1,
-          nombre: 'IED Simón Bolívar',
-          correo: 'contacto@simonbolivar.edu.co',
-          jornada: 'MANANA_Y_TARDE',
-          nombre_contacto: 'María González',
-          telefono_contacto: '3001234567'
-        },
-        {
-          id: 2,
-          nombre: 'IED José Martí',
-          correo: 'info@josemarti.edu.co',
-          jornada: 'UNICA_MANANA',
-          nombre_contacto: 'Carlos Pérez',
-          telefono_contacto: '3009876543'
-        }
-      ];
+      const [institucionesData, sedesData] = await Promise.all([
+        institucionesService.getAll(),
+        sedesService.getAll()
+      ]);
 
-      // Datos de ejemplo de sedes
-      const mockSedes: SedeConInstitucion[] = [
-        {
-          id: 1,
-          nombre: 'Sede Principal',
-          direccion: 'Calle 50 #20-30, Barranquilla',
-          id_inst: 1,
-          is_principal: true,
-          nombreInstitucion: 'IED Simón Bolívar'
-        },
-        {
-          id: 2,
-          nombre: 'Sede Norte',
-          direccion: 'Carrera 45 #80-15, Barranquilla',
-          id_inst: 1,
-          is_principal: false,
-          nombreInstitucion: 'IED Simón Bolívar'
-        },
-        {
-          id: 3,
-          nombre: 'Sede Principal',
-          direccion: 'Carrera 38 #70-25, Barranquilla',
-          id_inst: 2,
-          is_principal: true,
-          nombreInstitucion: 'IED José Martí'
-        }
-      ];
-      
-      setInstituciones(mockInstituciones);
-      setSedes(mockSedes);
+      setInstituciones(institucionesData);
+      setSedes(sedesData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
+      // Error toast is handled automatically by API client
     } finally {
       setLoading(false);
     }
@@ -92,18 +51,19 @@ export function SedesTab() {
   const handleDelete = async (id: number) => {
     const sede = sedes.find(s => s.id === id);
     if (sede?.is_principal) {
+      // Manual alert for business rule (not an API error)
       alert('No se puede eliminar la sede principal. Primero debe designar otra sede como principal.');
       return;
     }
 
     if (window.confirm('¿Está seguro de eliminar esta sede?')) {
       try {
-        // Llamar a la API
-        setSedes(sedes.filter(s => s.id !== id));
-        alert('Sede eliminada exitosamente');
+        await sedesService.delete(id);
+        // Success toast is shown automatically by API client
+        fetchData(); // Refresh list
       } catch (error) {
         console.error('Error al eliminar sede:', error);
-        alert('Error al eliminar la sede');
+        // Error toast is shown automatically by API client
       }
     }
   };
@@ -115,13 +75,13 @@ export function SedesTab() {
   };
 
   const filteredSedes = sedes.filter(sede => {
-    const matchesSearch = 
+    const matchesSearch =
       sede.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sede.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sede.nombreInstitucion?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      sede.institucion_nombre?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesFilter = filterInstitucion === '' || sede.id_inst === filterInstitucion;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -142,7 +102,7 @@ export function SedesTab() {
               Gestión de sedes principales y secundarias de cada institución
             </CardDescription>
           </div>
-          <button 
+          <button
             onClick={handleCreate}
             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md transform hover:scale-105 duration-200"
           >
@@ -151,7 +111,7 @@ export function SedesTab() {
           </button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="text-center py-12">
@@ -174,7 +134,7 @@ export function SedesTab() {
                   className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all hover:border-green-300"
                 />
               </div>
-              
+
               <select
                 value={filterInstitucion}
                 onChange={(e) => setFilterInstitucion(e.target.value === '' ? '' : Number(e.target.value))}
@@ -217,7 +177,7 @@ export function SedesTab() {
                   {filteredSedes.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-12 text-center text-gray-500 italic">
-                        {searchTerm || filterInstitucion !== '' 
+                        {searchTerm || filterInstitucion !== ''
                           ? 'No se encontraron sedes con ese criterio de búsqueda'
                           : 'No hay sedes registradas. Haz clic en "Agregar Sede" para comenzar.'
                         }
@@ -225,11 +185,10 @@ export function SedesTab() {
                     </tr>
                   ) : (
                     filteredSedes.map((sede) => (
-                      <tr key={sede.id} className={`transition-all duration-200 border-b border-gray-100 ${
-                        sede.is_principal 
-                          ? 'bg-gradient-to-r from-blue-50 to-transparent hover:from-blue-100 hover:to-blue-50' 
-                          : 'hover:bg-green-50'
-                      }`}>
+                      <tr key={sede.id} className={`transition-all duration-200 border-b border-gray-100 ${sede.is_principal
+                        ? 'bg-gradient-to-r from-blue-50 to-transparent hover:from-blue-100 hover:to-blue-50'
+                        : 'hover:bg-green-50'
+                        }`}>
                         <td className="px-4 py-3 text-sm font-semibold text-gray-900">
                           <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold">
                             {sede.id}
@@ -240,7 +199,7 @@ export function SedesTab() {
                             <Building2 className="w-5 h-5 text-green-600" />
                             <div>
                               <p className="font-semibold">{sede.nombre}</p>
-                              {sede.is_principal && <p className="text-xs text-blue-600 font-bold">⭐ Sede Principal</p>}
+                              {sede.is_principal && <p className="text-xs text-blue-600 font-bold">⭐ Principal</p>}
                             </div>
                           </div>
                         </td>
@@ -252,7 +211,7 @@ export function SedesTab() {
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-semibold">
-                            🏫 {sede.nombreInstitucion}
+                            {sede.institucion_nombre}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-center">
@@ -269,13 +228,17 @@ export function SedesTab() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => {/* TODO: Vista detalle */}}
-                              className="p-2 hover:bg-blue-100 rounded-lg transition-all text-blue-600 hover:text-blue-700 font-semibold transform hover:scale-110 duration-150"
-                              title="Ver detalles"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            {/*
+<button
+  onClick={() => {
+    // TODO: Vista detalle
+  }}
+  className="p-2 hover:bg-blue-100 rounded-lg transition-all text-blue-600 hover:text-blue-700 font-semibold transform hover:scale-110 duration-150"
+  title="Ver detalles"
+>
+  <Eye className="w-4 h-4" />
+</button>
+*/}
                             <button
                               onClick={() => handleEdit(sede)}
                               className="p-2 hover:bg-amber-100 rounded-lg transition-all text-amber-600 hover:text-amber-700 font-semibold transform hover:scale-110 duration-150"
@@ -286,11 +249,10 @@ export function SedesTab() {
                             <button
                               onClick={() => handleDelete(sede.id)}
                               disabled={sede.is_principal}
-                              className={`p-2 rounded-lg transition-all font-semibold transform duration-150 ${
-                                sede.is_principal
-                                  ? 'text-gray-300 cursor-not-allowed'
-                                  : 'hover:bg-red-100 text-red-600 hover:text-red-700 hover:scale-110'
-                              }`}
+                              className={`p-2 rounded-lg transition-all font-semibold transform duration-150 ${sede.is_principal
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'hover:bg-red-100 text-red-600 hover:text-red-700 hover:scale-110'
+                                }`}
                               title={sede.is_principal ? 'No se puede eliminar la sede principal' : 'Eliminar'}
                             >
                               <Trash2 className="w-4 h-4" />

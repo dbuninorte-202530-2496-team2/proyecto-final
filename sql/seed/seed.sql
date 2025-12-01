@@ -100,7 +100,7 @@ INSERT INTO personal (codigo, nombre, apellido, correo, telefono, id_rol, usuari
 -- =====================================================
 
 INSERT INTO institucion (nombre, correo, jornada, nombre_contacto, telefono_contacto) VALUES
-('Institución Educativa San José', 'contacto@sanjose.edu.co', 'ÚNICA', 'Rector Principal', '3151234567');
+('Institución Educativa San José', 'contacto@sanjose.edu.co', 'MANANA_Y_TARDE', 'Rector Principal', '3151234567');
 
 INSERT INTO sede (id, nombre, direccion, id_inst, is_principal) VALUES
 (1, 'Sede Principal', 'Calle 5 # 10-20, Cali', 1, TRUE),

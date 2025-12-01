@@ -1,10 +1,11 @@
 export interface Personal {
   id: number;
-  nombres: string;
-  apellidos: string;
+  codigo: string;
+  nombre: string;
+  apellido?: string;
   correo: string;
-  telefono: string;
-  tipo_doc: number; // id del tipo de documento
-  num_doc: string;
-  id_rol: number;   // id del rol
+  telefono?: string;
+  tipo_doc: number;
+  id_rol: number;
+  usuario?: string;
 }
