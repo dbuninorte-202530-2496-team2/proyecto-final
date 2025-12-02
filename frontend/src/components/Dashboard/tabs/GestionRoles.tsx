@@ -1,39 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Plus, Edit2, Trash2, Search } from 'lucide-react';
 import type { Rol } from '../../../types/rol';
-
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-    items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
+import { rolesService } from '../../../services/api/roles.service';
 
 export const GestionRoles: React.FC = () => {
-    const [roles, setRoles] = useState<Rol[]>([
-        { id: 1, nombre: 'ADMINISTRADOR', descripcion: 'Control total del sistema' },
-        { id: 2, nombre: 'ADMINISTRATIVO', descripcion: 'Gestión académica y operativa' },
-        { id: 3, nombre: 'TUTOR', descripcion: 'Registro de clases y notas' },
-    ]);
-
+    const [roles, setRoles] = useState<Rol[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState<Partial<Rol>>({ nombre: '', descripcion: '' });
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Cargar roles al montar el componente
+    useEffect(() => {
+        loadRoles();
+    }, []);
+
+    const loadRoles = async () => {
+        try {
+            setLoading(true);
+            const data = await rolesService.getAll();
+            setRoles(data);
+        } catch (error) {
+            console.error('Error loading roles:', error);
+            alert('Error al cargar los roles');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredRoles = roles.filter(r =>
         r.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (r.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.nombre) return;
 
-        if (editingId) {
-            setRoles(prev => prev.map(r => r.id === editingId ? { ...r, ...formData } as Rol : r));
-        } else {
-            setRoles(prev => [...prev, { id: generateId(prev), ...formData } as Rol]);
-        }
+        try {
+            if (editingId) {
+                // Actualizar rol existente
+                await rolesService.update(editingId, formData);
+                alert('Rol actualizado correctamente');
+            } else {
+                // Crear nuevo rol
+                await rolesService.create(formData);
+                alert('Rol creado correctamente');
+            }
 
-        handleCloseForm();
+            // Recargar roles
+            await loadRoles();
+            handleCloseForm();
+        } catch (error: any) {
+            console.error('Error saving role:', error);
+            alert(error.response?.data?.message || 'Error al guardar el rol');
+        }
     };
 
     const handleEdit = (rol: Rol) => {
@@ -42,9 +64,18 @@ export const GestionRoles: React.FC = () => {
         setShowForm(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (window.confirm('¿Eliminar este rol?')) {
-            setRoles(prev => prev.filter(r => r.id !== id));
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('¿Eliminar este rol?')) {
+            return;
+        }
+
+        try {
+            await rolesService.delete(id);
+            alert('Rol eliminado correctamente');
+            await loadRoles();
+        } catch (error: any) {
+            console.error('Error deleting role:', error);
+            alert(error.response?.data?.message || 'Error al eliminar el rol');
         }
     };
 
@@ -53,6 +84,10 @@ export const GestionRoles: React.FC = () => {
         setEditingId(null);
         setFormData({ nombre: '', descripcion: '' });
     };
+
+    if (loading) {
+        return <div className="flex justify-center items-center p-8">Cargando...</div>;
+    }
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -107,6 +142,13 @@ export const GestionRoles: React.FC = () => {
                                 </td>
                             </tr>
                         ))}
+                        {filteredRoles.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                                    No se encontraron roles
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -120,7 +162,9 @@ export const GestionRoles: React.FC = () => {
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Rol</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Nombre del Rol <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -152,7 +196,7 @@ export const GestionRoles: React.FC = () => {
                                     type="submit"
                                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
                                 >
-                                    Guardar
+                                    {editingId ? 'Actualizar' : 'Crear Rol'}
                                 </button>
                             </div>
                         </form>
