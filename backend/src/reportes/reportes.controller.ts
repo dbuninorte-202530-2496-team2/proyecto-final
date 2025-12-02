@@ -41,21 +41,18 @@ export class ReportesController {
 
     // ===== REPORTES DE NOTAS =====
 
-    @Get('boletin/estudiante/:id_estudiante/periodo/:id_periodo')
+    @Get('boletin')
     @ApiOperation({
         summary: 'Obtener boletín de notas de un estudiante',
-        description: 'Genera el boletín completo con todas las notas del estudiante en un periodo específico, incluyendo información del aula, institución y nota final ponderada.'
+        description: 'Genera el boletín completo de un estudiante con todas las notas de todos los periodos. Retorna una fila por cada periodo con sus componentes y nota definitiva.'
     })
-    @ApiParam({ name: 'id_estudiante', description: 'ID del estudiante' })
-    @ApiParam({ name: 'id_periodo', description: 'ID del periodo académico' })
-    @ApiResponse({ status: 200, description: 'Boletín obtenido exitosamente', type: [BoletinEstudianteReporte] })
+    @ApiResponse({ status: 200, description: 'Boletín obtenido exitosamente (array de periodos)', type: [BoletinEstudianteReporte] })
     @ApiResponse({ status: 404, description: 'Estudiante no encontrado o sin aula asignada' })
     @ApiResponse({ status: 400, description: 'Parámetros inválidos' })
-    obtenerBoletin(
-        @Param('id_estudiante', ParseIntPipe) id_estudiante: number,
-        @Param('id_periodo', ParseIntPipe) id_periodo: number
+    async getBoletin(
+        @Query('id_estudiante', ParseIntPipe) id_estudiante: number,
     ) {
-        return this.reportesService.obtenerBoletin(id_estudiante, id_periodo);
+        return this.reportesService.obtenerBoletin(id_estudiante);
     }
 
     @Get('planilla/aula/:id_aula/componente/:id_componente')

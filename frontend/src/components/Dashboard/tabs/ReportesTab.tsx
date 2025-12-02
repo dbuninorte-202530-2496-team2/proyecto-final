@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../ui/Tabs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../ui/Card';
-import { BarChart3, FileText, User, ClipboardList, PieChart } from 'lucide-react';
+import { BarChart3, FileText, ClipboardList } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 
 import ReportesTutorTab from './ReportesTutorTab';
-import ReportesAvanzadosTab from './ReportesAvanzadosTab';
-import ReportesEstadisticasTab from './ReportesEstadisticasTab';
+import ReportesAcademicosTab from './ReportesAcademicosTab';
 
 const ReportesTab: React.FC = () => {
   const { rol } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>(rol === 'TUTOR' ? 'mis-reportes' : 'estadisticas');
+  const [activeTab, setActiveTab] = useState<string>(rol === 'TUTOR' ? 'mis-reportes' : 'academicos');
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -32,8 +31,8 @@ const ReportesTab: React.FC = () => {
           {rol === 'TUTOR' ? (
             <ReportesTutorTab />
           ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 mb-8 bg-white p-1 rounded-xl border border-gray-200 shadow-sm h-auto">
+            <Tabs defaultValue={activeTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-1 md:grid-cols-2 mb-8 bg-white p-1 rounded-xl border border-gray-200 shadow-sm h-auto">
                 {/* Tab de Autogestión/Gestión de Tutor - Visible para TODOS */}
                 <TabsTrigger
                   value="mis-reportes"
@@ -44,18 +43,11 @@ const ReportesTab: React.FC = () => {
                 </TabsTrigger>
 
                 <TabsTrigger
-                  value="avanzados"
+                  value="academicos"
                   className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-none"
                 >
                   <FileText className="w-4 h-4" />
                   Reportes Académicos
-                </TabsTrigger>
-                <TabsTrigger
-                  value="estadisticas"
-                  className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-none"
-                >
-                  <PieChart className="w-4 h-4" />
-                  Estadísticas de Desempeño
                 </TabsTrigger>
               </TabsList>
 
@@ -63,12 +55,8 @@ const ReportesTab: React.FC = () => {
                 <ReportesTutorTab />
               </TabsContent>
 
-              <TabsContent value="avanzados" className="mt-0 focus-visible:outline-none">
-                <ReportesAvanzadosTab />
-              </TabsContent>
-
-              <TabsContent value="estadisticas" className="mt-0 focus-visible:outline-none">
-                <ReportesEstadisticasTab />
+              <TabsContent value="academicos" className="mt-0 focus-visible:outline-none">
+                <ReportesAcademicosTab />
               </TabsContent>
             </Tabs>
           )}

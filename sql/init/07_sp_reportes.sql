@@ -132,23 +132,27 @@ $$ LANGUAGE plpgsql STABLE;
 
 -- Function: Boletín de calificaciones de un estudiante
 CREATE OR REPLACE FUNCTION fn_boletin_estudiante(
-    p_id_estudiante INT,
-    p_id_periodo INT
+    p_id_estudiante INT
 )
 RETURNS TABLE (
+    estudiante_id INT,
+    estudiante_codigo TEXT,
     estudiante_nombre TEXT,
     estudiante_apellidos TEXT,
+    tipo_documento TEXT,
+    documento TEXT,
     institucion_nombre TEXT,
     sede_nombre TEXT,
     grado INT,
     grupo INT,
     programa TEXT,
+    tipo_programa INT,
+    periodo_id INT,
+    periodo_nombre TEXT,
     periodo_anho INT,
-    componente_nombre TEXT,
-    componente_porcentaje NUMERIC,
-    nota_valor NUMERIC,
-    nota_ponderada NUMERIC,
-    nota_final NUMERIC
+    periodo_numero INT,
+    componentes JSONB,
+    nota_definitiva NUMERIC
 ) AS $$
 DECLARE
     v_id_aula INT;
@@ -156,60 +160,77 @@ DECLARE
     v_tipo_programa INT;
 BEGIN
     v_id_aula := fn_obtener_aula_actual_estudiante(p_id_estudiante);
-    
+
     IF v_id_aula IS NULL THEN
         RAISE EXCEPTION 'El estudiante % no existe o no tiene aula asignada', p_id_estudiante;
     END IF;
-    
+
     v_grado := fn_obtener_grado_aula(v_id_aula);
     v_tipo_programa := fn_obtener_tipo_programa(v_grado);
-    
+
     RETURN QUERY
-    WITH notas_ponderadas AS (
-        SELECT 
-            c.nombre as comp_nombre,
-            c.porcentaje as comp_porcentaje,
-            COALESCE(n.valor, 0) as nota_val,
-            COALESCE(n.valor, 0) * c.porcentaje / 100 as ponderada
-        FROM componente c
-        LEFT JOIN nota n ON n.id_comp = c.id AND n.id_estudiante = p_id_estudiante
-        WHERE c.id_periodo = p_id_periodo
-          AND c.tipo_programa = v_tipo_programa
-    ),
-    nota_total AS (
-        SELECT SUM(ponderada) as total
-        FROM notas_ponderadas
-    )
     SELECT 
-        e.nombre as estudiante_nombre,
-        e.apellidos as estudiante_apellidos,
-        i.nombre as institucion_nombre,
-        se.nombre as sede_nombre,
+        e.id,
+        e.codigo::TEXT,
+        e.nombre,
+        e.apellidos,
+        td.codigo::TEXT,
+        e.codigo::TEXT,
+        i.nombre,
+        se.nombre,
         a.grado,
         a.grupo,
         CASE v_tipo_programa
             WHEN 1 THEN 'INSIDECLASSROOM'
             WHEN 2 THEN 'OUTSIDECLASSROOM'
-        END as programa,
-        pe.anho as periodo_anho,
-        np.comp_nombre,
-        np.comp_porcentaje,
-        np.nota_val,
-        np.ponderada,
-        nt.total as nota_final
+            ELSE 'UNKNOWN'
+        END,
+        v_tipo_programa,
+        pe.id,
+        (pe.numero::TEXT || ' - ' || pe.anho::TEXT),
+        pe.anho,
+        pe.numero,
+
+        -- JSON de componentes por periodo
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id_componente', c.id,
+                    'nombre_componente', c.nombre,
+                    'porcentaje', c.porcentaje,
+                    'nota', n.valor,
+                    'nota_ponderada', COALESCE(n.valor, 0) * c.porcentaje / 100
+                )
+                ORDER BY c.id
+            )
+            FROM componente c
+            LEFT JOIN nota n ON n.id_comp = c.id AND n.id_estudiante = e.id
+            WHERE c.id_periodo = pe.id
+              AND c.tipo_programa = v_tipo_programa
+        ) AS componentes,
+
+        -- Nota definitiva por periodo
+        (
+            SELECT COALESCE(SUM(COALESCE(n.valor,0) * c.porcentaje / 100), 0)
+            FROM componente c
+            LEFT JOIN nota n ON n.id_comp = c.id AND n.id_estudiante = e.id
+            WHERE c.id_periodo = pe.id
+              AND c.tipo_programa = v_tipo_programa
+        ) AS nota_definitiva
+
     FROM estudiante e
+    INNER JOIN tipoDocumento td ON e.tipo_doc = td.id
     INNER JOIN estudiante_aula ea ON e.id = ea.id_estudiante
     INNER JOIN aula a ON ea.id_aula = a.id
     INNER JOIN sede se ON a.id_sede = se.id
     INNER JOIN institucion i ON se.id_inst = i.id
-    CROSS JOIN periodo pe
-    CROSS JOIN notas_ponderadas np
-    CROSS JOIN nota_total nt
+    INNER JOIN periodo pe ON TRUE
     WHERE e.id = p_id_estudiante
       AND ea.fecha_desasignado IS NULL
-      AND pe.id = p_id_periodo;
+    ORDER BY pe.anho, pe.numero;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
 
 -- Function: Estadísticas de asistencia por aula
 CREATE OR REPLACE FUNCTION fn_estadisticas_asistencia_aula(

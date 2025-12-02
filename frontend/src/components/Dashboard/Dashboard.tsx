@@ -14,7 +14,7 @@ import ConfiguracionTab from './tabs/ConfiguracionTab';
 import AsistenciaTutorTab from './tabs/AsistenciaTutorTab';
 import TutorAulaTab from './tabs/TutorAulaTab';
 import AulaHorarioTab from './tabs/AulaHorarioTab';
-import ReportesAvanzadosTab from './tabs/ReportesAvanzadosTab';
+
 import { SeguridadTab } from './tabs/SeguridadTab';
 import { Building2, MapPin, Zap, Users, Clock, FileText, BookOpen, Settings, BarChart3, Calendar, UserCheck, Lock } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export default function Dashboard() {
     { value: 'notas', label: 'Notas', icon: FileText },
     ...(tienePermisoAdministrativo ? [
       { value: 'configuracion', label: 'Configuración', icon: Settings },
-      { value: 'reportes-avanzados', label: 'Reportes Avanzados', icon: BarChart3 },
+
       ...(rol === 'ADMINISTRADOR' ? [{ value: 'seguridad', label: 'Seguridad', icon: Lock }] : []),
     ] : []),
     { value: 'reportes', label: 'Reportes', icon: BarChart3 },
@@ -104,9 +104,7 @@ export default function Dashboard() {
                   <TabsContent value="configuracion">
                     <ConfiguracionTab />
                   </TabsContent>
-                  <TabsContent value="reportes-avanzados">
-                    <ReportesAvanzadosTab />
-                  </TabsContent>
+
                   {rol === 'ADMINISTRADOR' && (
                     <TabsContent value="seguridad">
                       <SeguridadTab />
