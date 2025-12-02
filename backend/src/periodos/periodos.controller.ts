@@ -10,9 +10,9 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { 
-  ApiOperation, 
-  ApiTags, 
+import {
+  ApiOperation,
+  ApiTags,
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
@@ -25,22 +25,22 @@ import { ValidRoles } from '../auth/interfaces';
 @ApiTags('Periodos y Semanas')
 @Controller('periodos')
 export class PeriodosController {
-  constructor(private readonly periodosService: PeriodosService) {}
+  constructor(private readonly periodosService: PeriodosService) { }
 
   @Post()
   @Auth(ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Crear un nuevo periodo',
     description: 'Crea un nuevo periodo académico. Solo accesible por ADMINISTRADOR.'
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Periodo creado exitosamente',
     type: PeriodoEntity,
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'Ya existe un periodo para ese año',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
@@ -51,12 +51,12 @@ export class PeriodosController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener todos los periodos',
     description: 'Retorna una lista de todos los periodos académicos ordenados por año descendente.'
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Lista de periodos obtenida exitosamente',
     type: [PeriodoEntity],
   })
@@ -66,7 +66,7 @@ export class PeriodosController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener un periodo por ID',
     description: 'Retorna la información de un periodo específico.'
   })
@@ -75,13 +75,13 @@ export class PeriodosController {
     description: 'ID del periodo',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Periodo encontrado',
     type: PeriodoEntity,
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Periodo no encontrado',
   })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -91,7 +91,7 @@ export class PeriodosController {
   @Put(':id')
   @Auth(ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Actualizar un periodo',
     description: 'Actualiza un periodo existente. Solo accesible por ADMINISTRADOR.'
   })
@@ -100,13 +100,13 @@ export class PeriodosController {
     description: 'ID del periodo a actualizar',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Periodo actualizado exitosamente',
     type: PeriodoEntity,
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'Ya existe otro periodo para ese año',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
@@ -122,7 +122,7 @@ export class PeriodosController {
   @Delete(':id')
   @Auth(ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Eliminar un periodo',
     description: 'Elimina un periodo del sistema. Solo accesible por ADMINISTRADOR. No se puede eliminar si tiene semanas asociadas.'
   })
@@ -131,12 +131,12 @@ export class PeriodosController {
     description: 'ID del periodo a eliminar',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Periodo eliminado exitosamente',
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'No se puede eliminar porque tiene semanas asociadas',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
@@ -148,7 +148,7 @@ export class PeriodosController {
 
   @Get(':id/semanas')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener todas las semanas de un periodo',
     description: 'Retorna una lista de todas las semanas de un periodo específico ordenadas por fecha.'
   })
@@ -157,8 +157,8 @@ export class PeriodosController {
     description: 'ID del periodo',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Lista de semanas obtenida exitosamente',
     type: [SemanaEntity],
   })
@@ -170,7 +170,7 @@ export class PeriodosController {
   @Post(':id/generar-semanas')
   @Auth(ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Generar semanas para un periodo',
     description: 'Genera automáticamente las semanas del periodo. Solo se puede ejecutar una vez por periodo. Solo accesible por ADMINISTRADOR.'
   })
@@ -179,8 +179,8 @@ export class PeriodosController {
     description: 'ID del periodo',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Semanas generadas exitosamente',
     schema: {
       example: {
@@ -189,8 +189,8 @@ export class PeriodosController {
       }
     }
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'El periodo ya tiene semanas generadas',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
@@ -206,7 +206,7 @@ export class PeriodosController {
 
   @Get(':id/calendario/info')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener información del calendario del periodo',
     description: 'Retorna un resumen con fechas de inicio/fin y duración total del calendario.'
   })
@@ -215,8 +215,8 @@ export class PeriodosController {
     description: 'ID del periodo',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Información del calendario obtenida exitosamente',
     schema: {
       example: {
@@ -229,11 +229,33 @@ export class PeriodosController {
       }
     }
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Periodo no encontrado o no tiene semanas generadas',
   })
   getInfoCalendario(@Param('id', ParseIntPipe) id: number) {
     return this.periodosService.getInfoCalendario(id);
+  }
+  @Delete(':id/semanas')
+  @Auth(ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Eliminar todas las semanas de un periodo',
+    description: 'Elimina todas las semanas de un periodo. Solo accesible por ADMINISTRADOR.'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del periodo',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Semanas eliminadas exitosamente',
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
+  @ApiResponse({ status: 404, description: 'Periodo no encontrado' })
+  removeSemanas(@Param('id', ParseIntPipe) id: number) {
+    return this.periodosService.removeSemanasByPeriodo(id);
   }
 }
