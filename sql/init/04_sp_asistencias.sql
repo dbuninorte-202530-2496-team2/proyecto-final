@@ -101,7 +101,7 @@ BEGIN
     v_es_festivo := fn_es_festivo(p_fecha_real);
 
     IF v_es_festivo AND p_dicto_clase THEN
-        RAISE WARNING 'La fecha % es festivo. Se registra clase dictada bajo advertencia.', p_fecha_real;
+        RAISE EXCEPTION 'No se puede marcar como clase dictada en un día festivo (%).', p_fecha_real;
     END IF;
 
     IF NOT p_dicto_clase AND p_id_motivo IS NULL AND NOT v_es_festivo THEN

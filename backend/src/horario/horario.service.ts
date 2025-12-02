@@ -22,7 +22,7 @@ export class HorarioService {
         try {
             const query = `
         INSERT INTO horario (dia_sem, hora_ini, hora_fin)
-        VALUES ($1, $2, $3)
+        VALUES ($1, $2::time, $3::time)
         RETURNING *
       `;
             const result = await this.pool.query(query, [dia_sem, hora_ini, hora_fin]);

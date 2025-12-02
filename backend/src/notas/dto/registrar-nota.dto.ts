@@ -17,11 +17,11 @@ export class RegistrarNotaDto {
     @IsNotEmpty()
     id_tutor: number;
 
-    @ApiProperty({ example: 4.5, description: 'Valor de la nota (0.0 - 5.0)' })
+    @ApiProperty({ example: 85, description: 'Valor de la nota (0 - 100)' })
     @IsNumber()
     @IsNotEmpty()
     @Min(0)
-    @Max(5)
+    @Max(100)
     valor: number;
 
     @ApiPropertyOptional({ example: 'Buen trabajo', description: 'Comentario opcional sobre la nota' })

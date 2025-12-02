@@ -49,7 +49,7 @@ export class PersonalController {
     }
 
     @Get('tutores')
-    @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
+    @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Listar solo tutores' })
     @ApiResponse({ status: 200, description: 'Lista de tutores obtenida' })

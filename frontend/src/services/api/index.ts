@@ -15,6 +15,21 @@ export { rolesService } from './roles.service';
 export type { Rol } from './roles.service';
 export { tipoDocumentoService } from './tipo-documento.service';
 export type { TipoDocumento } from './tipo-documento.service';
+export * from './asistencia-estudiantes.service';
+export { asistenciaTutorService } from './asistencia-tutor.service';
+export type {
+    ClaseProgramada,
+    CreateAsistenciaTutorDto,
+    UpdateAsistenciaTutorDto,
+    AsistenciaTutorResponse
+} from './asistencia-tutor.service';
+export { motivoService } from './motivo.service';
+export type { Motivo, CreateMotivoDto, UpdateMotivoDto } from './motivo.service';
+export { festivoService } from './festivo.service';
+export type { Festivo, CreateFestivoDto, UpdateFestivoDto } from './festivo.service';
+export { reportesService } from './reportes.service';
+export type { AsistenciaTutorReporte, NotasTutorReporte, FiltroFechas } from './reportes.service';
+
 
 // Export API client for direct use if needed
 export { default as apiClient } from './api-client';

@@ -20,11 +20,11 @@ import { MotivoEntity } from './entities/motivo.entity';
 
 @ApiTags('Motivos')
 @Controller('motivo')
-@Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
 export class MotivoController {
     constructor(private readonly motivoService: MotivoService) { }
 
     @Post()
+    @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Crear un nuevo motivo',
@@ -52,6 +52,7 @@ export class MotivoController {
     }
 
     @Get()
+    @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Listar todos los motivos',
@@ -76,6 +77,7 @@ export class MotivoController {
     }
 
     @Get(':id')
+    @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Obtener motivo por ID',
@@ -106,6 +108,7 @@ export class MotivoController {
     }
 
     @Put(':id')
+    @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Actualizar un motivo',

@@ -200,8 +200,20 @@ export class NotasTutorReporte {
     @ApiProperty({ description: 'Grupo del aula' })
     aula_grupo: number;
 
+    @ApiProperty({ description: 'Nombre de la sede' })
+    sede_nombre: string;
+
+    @ApiProperty({ description: 'Nombre de la institución' })
+    institucion_nombre: string;
+
     @ApiProperty({ description: 'Nombre del componente' })
     componente_nombre: string;
+
+    @ApiProperty({ description: 'Año del periodo' })
+    periodo_anho: number;
+
+    @ApiProperty({ description: 'Número del periodo' })
+    periodo_numero: number;
 
     @ApiProperty({ description: 'Valor de la nota' })
     valor_nota: number;
@@ -209,6 +221,46 @@ export class NotasTutorReporte {
     @ApiProperty({ description: 'Comentario', nullable: true })
     comentario: string | null;
 }
+
+// Entidad para reporte de asistencia del tutor
+export class AsistenciaTutorReporte {
+    @ApiProperty({ description: 'Fecha real de la clase' })
+    fecha_real: string;
+
+    @ApiProperty({ description: 'Día de la semana' })
+    dia_semana: string;
+
+    @ApiProperty({ description: 'Hora de inicio' })
+    hora_inicio: string;
+
+    @ApiProperty({ description: 'Hora de fin' })
+    hora_fin: string;
+
+    @ApiProperty({ description: 'Grado del aula' })
+    aula_grado: number;
+
+    @ApiProperty({ description: 'Grupo del aula' })
+    aula_grupo: number;
+
+    @ApiProperty({ description: 'Nombre de la sede' })
+    sede_nombre: string;
+
+    @ApiProperty({ description: 'Nombre de la institución' })
+    institucion_nombre: string;
+
+    @ApiProperty({ description: 'Si la clase fue dictada', nullable: true })
+    dicto_clase: boolean | null;
+
+    @ApiProperty({ description: 'Fecha de reposición', nullable: true })
+    fecha_reposicion: string | null;
+
+    @ApiProperty({ description: 'Descripción del motivo de inasistencia', nullable: true })
+    motivo_descripcion: string | null;
+
+    @ApiProperty({ description: 'Estado de la clase: DICTADA, NO_DICTADA, REPUESTA, PENDIENTE' })
+    estado: string;
+}
+
 
 // Entidad para estadísticas de asistencia de aula
 export class EstadisticasAsistenciaAulaReporte {

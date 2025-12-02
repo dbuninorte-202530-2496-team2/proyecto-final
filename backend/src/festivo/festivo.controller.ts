@@ -20,11 +20,11 @@ import { FestivoEntity } from './entities/festivo.entity';
 
 @ApiTags('Festivos')
 @Controller('festivo')
-@Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
 export class FestivoController {
     constructor(private readonly festivoService: FestivoService) { }
 
     @Post()
+    @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Crear un nuevo festivo',
@@ -53,6 +53,7 @@ export class FestivoController {
     }
 
     @Get()
+    @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Listar todos los festivos',
@@ -76,6 +77,7 @@ export class FestivoController {
     }
 
     @Get(':id')
+    @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Obtener festivo por ID',
@@ -107,6 +109,7 @@ export class FestivoController {
     }
 
     @Put(':id')
+    @Auth(ValidRoles.ADMINISTRADOR, ValidRoles.ADMINISTRATIVO)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Actualizar un festivo',

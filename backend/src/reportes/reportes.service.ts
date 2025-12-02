@@ -4,6 +4,7 @@ import {
     BadRequestException,
     InternalServerErrorException,
     NotFoundException,
+    HttpException,
 } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_CONNECTION } from '../database/database.module';
@@ -14,25 +15,42 @@ export class ReportesService {
         @Inject(PG_CONNECTION) private readonly pool: Pool,
     ) { }
 
-    async obtenerBoletin(id_estudiante: number, id_periodo: number): Promise<any[]> {
+    async obtenerBoletin(id_estudiante: number): Promise<any[]> {
         try {
-            // Verificar estudiante primero para dar un error 404 claro si no existe
-            const estCheck = await this.pool.query('SELECT id FROM estudiante WHERE id = $1', [id_estudiante]);
-            if (estCheck.rows.length === 0) {
-                throw new NotFoundException(`Estudiante con id ${id_estudiante} no encontrado`);
+            // Verificar existencia del estudiante
+            const { rows: est } = await this.pool.query(
+                'SELECT 1 FROM estudiante WHERE id = $1',
+                [id_estudiante]
+            );
+
+            if (est.length === 0) {
+                throw new NotFoundException(
+                    `Estudiante con id ${id_estudiante} no encontrado`
+                );
             }
 
-            const query = 'SELECT * FROM fn_boletin_estudiante($1, $2)';
-            const result = await this.pool.query(query, [id_estudiante, id_periodo]);
+            // Ejecutar función corregida: solo un parámetro
+            const result = await this.pool.query(
+                'SELECT * FROM fn_boletin_estudiante($1)',
+                [id_estudiante]
+            );
+
             return result.rows;
         } catch (error) {
-            if (error instanceof NotFoundException) throw error;
+            console.log(error)
+            if (error instanceof HttpException) throw error;
+
             if (error.code === 'P0001') {
                 throw new BadRequestException(error.message);
             }
-            throw new InternalServerErrorException(`Error al obtener el boletín: ${error.message}`);
+
+            throw new InternalServerErrorException(
+                `Error al obtener boletín: ${error.message}`
+            );
         }
     }
+
+
 
     async obtenerAsistenciaAula(id_aula: number, fecha_inicio?: string, fecha_fin?: string): Promise<any[]> {
         try {
@@ -63,6 +81,18 @@ export class ReportesService {
             throw new InternalServerErrorException(`Error al obtener reporte de notas del tutor: ${error.message}`);
         }
     }
+
+    async obtenerAsistenciaTutor(id_tutor: number, fecha_inicio?: string, fecha_fin?: string): Promise<any[]> {
+        try {
+            const query = 'SELECT * FROM fn_reporte_asistencia_tutor($1, $2, $3)';
+            const result = await this.pool.query(query, [id_tutor, fecha_inicio || null, fecha_fin || null]);
+            return result.rows;
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException(`Error al obtener reporte de asistencia del tutor: ${error.message}`);
+        }
+    }
+
 
     async obtenerHorarioTutor(id_tutor: number, id_periodo: number): Promise<any[]> {
         try {

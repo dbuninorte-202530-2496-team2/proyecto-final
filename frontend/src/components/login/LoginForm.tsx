@@ -4,7 +4,7 @@ import type { UserRole } from "../../types/auth.types";
 import axios from "axios";
 
 interface LoginFormProps {
-  onLogin: (usuario: string, rol: UserRole, token: string) => void;
+  onLogin: (usuario: string, rol: UserRole, token: string, personalId: number) => void;
 }
 
 interface ValidationErrors {
@@ -55,10 +55,10 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       });
 
       // Backend returns: { id, usuario, contrasena, rol, token }
-      const { token, rol } = response.data;
+      const { id, token, rol } = response.data;
 
-      if (token && rol) {
-        onLogin(usuario, rol as UserRole, token);
+      if (token && rol && id) {
+        onLogin(usuario, rol as UserRole, token, id);
       } else {
         console.error('Invalid response structure:', response.data);
         setError("Error en la respuesta del servidor. Intenta de nuevo.");
