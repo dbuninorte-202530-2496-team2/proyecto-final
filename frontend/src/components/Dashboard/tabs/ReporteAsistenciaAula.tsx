@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { AsistenciaAulaDetalle, AsistenciaAulaEstadisticas, FiltrosAsistenciaAula } from '../../../types/reportes';
 import type { Institucion } from '../../../types/institucion';
 import type { Sede } from '../../../types/sede';
@@ -19,102 +19,45 @@ import {
     AlertTriangle,
     CalendarRange,
 } from 'lucide-react';
-
-// ============================================
-// DATOS MOCK
-// ============================================
-
-const mockInstituciones: Institucion[] = [
-    { id: 1, nombre: 'IED San José', correo: 'contacto@sanjose.edu.co', jornada: 'UNICA_MANANA', nombre_contacto: 'María García', telefono_contacto: '3001234567' },
-    { id: 2, nombre: 'IED Santa María', correo: 'info@santamaria.edu.co', jornada: 'MANANA_TARDE', nombre_contacto: 'Pedro López', telefono_contacto: '3007654321' },
-];
-
-const mockSedes: Sede[] = [
-    { id: 1, nombre: 'Sede Principal', direccion: 'Calle 10 #20-30', id_inst: 1, is_principal: true },
-    { id: 2, nombre: 'Sede Norte', direccion: 'Carrera 5 #15-25', id_inst: 1, is_principal: false },
-    { id: 3, nombre: 'Sede Central', direccion: 'Avenida 8 #12-18', id_inst: 2, is_principal: true },
-];
-
-const mockAulas: Aula[] = [
-    { id: 1, grado: 4, grupo: 'A', id_sede: 1 },
-    { id: 2, grado: 5, grupo: 'B', id_sede: 1 },
-    { id: 3, grado: 9, grupo: 'A', id_sede: 2 },
-];
-
-const mockAsistenciaDetalle: AsistenciaAulaDetalle[] = [
-    {
-        semana: 1,
-        fecha_real: '2025-02-03',
-        id_tutor: 2,
-        nombre_tutor: 'Laura Rodríguez',
-        dia_semana: 'Lunes',
-        horario: 'LU 07:00-07:45',
-        es_festivo: false,
-        hubo_clase: true,
-        horas_dictadas: 1,
-        horas_no_dictadas: 0,
-        motivo_no_clase: null,
-        hubo_reposicion: false,
-        fecha_reposicion: null,
-    },
-    {
-        semana: 1,
-        fecha_real: '2025-02-05',
-        id_tutor: 2,
-        nombre_tutor: 'Laura Rodríguez',
-        dia_semana: 'Miércoles',
-        horario: 'MI 10:00-10:50',
-        es_festivo: false,
-        hubo_clase: false,
-        horas_dictadas: 0,
-        horas_no_dictadas: 1,
-        motivo_no_clase: 'Incapacidad Médica',
-        hubo_reposicion: true,
-        fecha_reposicion: '2025-02-12',
-    },
-    {
-        semana: 2,
-        fecha_real: '2025-02-10',
-        id_tutor: 2,
-        nombre_tutor: 'Laura Rodríguez',
-        dia_semana: 'Lunes',
-        horario: 'LU 07:00-07:45',
-        es_festivo: false,
-        hubo_clase: true,
-        horas_dictadas: 1,
-        horas_no_dictadas: 0,
-        motivo_no_clase: null,
-        hubo_reposicion: false,
-        fecha_reposicion: null,
-    },
-    {
-        semana: 2,
-        fecha_real: '2025-02-12',
-        id_tutor: 2,
-        nombre_tutor: 'Laura Rodríguez',
-        dia_semana: 'Miércoles',
-        horario: 'MI 10:00-10:50',
-        es_festivo: false,
-        hubo_clase: true,
-        horas_dictadas: 1,
-        horas_no_dictadas: 0,
-        motivo_no_clase: null,
-        hubo_reposicion: false,
-        fecha_reposicion: null,
-    },
-];
+import { reportesService } from '../../../services/api/reportes.service';
+import { institucionesService } from '../../../services/api/instituciones.service';
+import { sedesService } from '../../../services/api/sedes.service';
+import { aulasService } from '../../../services/api/aulas.service';
+import { toast } from 'sonner';
 
 // ============================================
 // UTILIDADES
 // ============================================
 
+/**
+ * Formatea una fecha del backend (puede venir como YYYY-MM-DD o como timestamp)
+ * a formato YYYY-MM-DD
+ */
+const formatearFecha = (fecha: string): string => {
+    if (!fecha) return '';
+    // Si ya está en formato YYYY-MM-DD, retornar tal cual
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha;
+    // Si viene como timestamp, extraer solo la fecha
+    return fecha.split('T')[0];
+};
+
+/**
+ * Formatea horas a enteros (redondeando)
+ */
+const formatearHoras = (horas: number): number => {
+    return Math.round(horas);
+};
+
 const calcularEstadisticas = (datos: AsistenciaAulaDetalle[]): AsistenciaAulaEstadisticas => {
     const total_programadas = datos.length;
-    const total_dictadas = datos.filter(d => d.hubo_clase).length;
-    const total_no_dictadas = datos.filter(d => !d.hubo_clase).length;
+    const total_dictadas = datos.filter(d => d.clase_dictada).length;
+    const total_no_dictadas = datos.filter(d => !d.clase_dictada).length;
     const total_con_reposicion = datos.filter(d => d.hubo_reposicion).length;
+
+    // Cumplimiento = clases dictadas + clases repuestas (aunque no se hayan dictado originalmente)
+    const total_cumplidas = datos.filter(d => d.clase_dictada || d.hubo_reposicion).length;
     const porcentaje_cumplimiento = total_programadas > 0
-        ? Math.round((total_dictadas / total_programadas) * 100)
+        ? Math.round((total_cumplidas / total_programadas) * 100)
         : 0;
 
     return {
@@ -126,30 +69,25 @@ const calcularEstadisticas = (datos: AsistenciaAulaDetalle[]): AsistenciaAulaEst
     };
 };
 
-const filtrarPorRango = (
-    datos: AsistenciaAulaDetalle[],
-    fechaDesde: string,
-    fechaHasta: string,
-): AsistenciaAulaDetalle[] => {
-    if (!fechaDesde && !fechaHasta) return datos;
-
-    return datos.filter(d => {
-        const fecha = new Date(d.fecha_real).getTime();
-        const desde = fechaDesde ? new Date(fechaDesde).getTime() : -Infinity;
-        const hasta = fechaHasta ? new Date(fechaHasta).getTime() : Infinity;
-        return fecha >= desde && fecha <= hasta;
-    });
-};
-
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 
 const ReporteAsistenciaAula: React.FC = () => {
-    const [instituciones] = useState<Institucion[]>(mockInstituciones);
-    const [sedes] = useState<Sede[]>(mockSedes);
-    const [aulas] = useState<Aula[]>(mockAulas);
-    const [asistenciaDetalle] = useState<AsistenciaAulaDetalle[]>(mockAsistenciaDetalle);
+    // Estado para datos de catálogos
+    const [instituciones, setInstituciones] = useState<Institucion[]>([]);
+    const [sedes, setSedes] = useState<Sede[]>([]);
+    const [aulas, setAulas] = useState<Aula[]>([]);
+    const [asistenciaDetalle, setAsistenciaDetalle] = useState<AsistenciaAulaDetalle[]>([]);
+
+    // Estado de carga y errores
+    const [loading, setLoading] = useState({
+        instituciones: false,
+        sedes: false,
+        aulas: false,
+        reporte: false,
+    });
+    const [error, setError] = useState<string | null>(null);
 
     const [filtros, setFiltros] = useState<FiltrosAsistenciaAula>({
         id_institucion: null,
@@ -160,6 +98,110 @@ const ReporteAsistenciaAula: React.FC = () => {
     });
 
     const [errorFechas, setErrorFechas] = useState<string | null>(null);
+
+    // Cargar instituciones al montar
+    useEffect(() => {
+        const cargarInstituciones = async () => {
+            try {
+                setLoading(prev => ({ ...prev, instituciones: true }));
+                const data = await institucionesService.getAll();
+                setInstituciones(data);
+            } catch (err: any) {
+                console.error('Error al cargar instituciones:', err);
+                toast.error('Error al cargar instituciones');
+            } finally {
+                setLoading(prev => ({ ...prev, instituciones: false }));
+            }
+        };
+        cargarInstituciones();
+    }, []);
+
+    // Cargar sedes cuando cambie la institución
+    useEffect(() => {
+        if (!filtros.id_institucion) {
+            setSedes([]);
+            return;
+        }
+
+        const cargarSedes = async () => {
+            try {
+                setLoading(prev => ({ ...prev, sedes: true }));
+                const data = await sedesService.getAll();
+                const sedesFiltradas = data.filter(s => s.id_inst === filtros.id_institucion);
+                setSedes(sedesFiltradas);
+            } catch (err: any) {
+                console.error('Error al cargar sedes:', err);
+                toast.error('Error al cargar sedes');
+            } finally {
+                setLoading(prev => ({ ...prev, sedes: false }));
+            }
+        };
+        cargarSedes();
+    }, [filtros.id_institucion]);
+
+    // Cargar aulas cuando cambie la sede
+    useEffect(() => {
+        if (!filtros.id_sede) {
+            setAulas([]);
+            return;
+        }
+
+        const cargarAulas = async () => {
+            try {
+                setLoading(prev => ({ ...prev, aulas: true }));
+                const data = await aulasService.getAll();
+                const aulasFiltradas = data.filter(a => a.id_sede === filtros.id_sede);
+                setAulas(aulasFiltradas);
+            } catch (err: any) {
+                console.error('Error al cargar aulas:', err);
+                toast.error('Error al cargar aulas');
+            } finally {
+                setLoading(prev => ({ ...prev, aulas: false }));
+            }
+        };
+        cargarAulas();
+    }, [filtros.id_sede]);
+
+    // Cargar reporte cuando cambie el aula o las fechas
+    useEffect(() => {
+        if (!filtros.id_aula) {
+            setAsistenciaDetalle([]);
+            setError(null);
+            return;
+        }
+
+        // Validar fechas antes de hacer la petición
+        if (filtros.fecha_desde && filtros.fecha_hasta) {
+            const desde = new Date(filtros.fecha_desde).getTime();
+            const hasta = new Date(filtros.fecha_hasta).getTime();
+            if (hasta < desde) {
+                setErrorFechas('La fecha "Hasta" debe ser posterior a la fecha "Desde"');
+                return;
+            }
+        }
+        setErrorFechas(null);
+
+        const cargarReporte = async () => {
+            try {
+                setLoading(prev => ({ ...prev, reporte: true }));
+                setError(null);
+                const data = await reportesService.getAsistenciaAula(
+                    filtros.id_aula!, // Already checked above, safe to assert
+                    filtros.fecha_desde || undefined,
+                    filtros.fecha_hasta || undefined
+                );
+                setAsistenciaDetalle(data);
+            } catch (err: any) {
+                console.error('Error al cargar reporte de asistencia:', err);
+                setError(err.response?.data?.message || 'Error al cargar el reporte de asistencia');
+                toast.error('Error al cargar el reporte');
+                setAsistenciaDetalle([]);
+            } finally {
+                setLoading(prev => ({ ...prev, reporte: false }));
+            }
+        };
+        cargarReporte();
+    }, [filtros.id_aula, filtros.fecha_desde, filtros.fecha_hasta]);
 
     // Filtrar sedes por institución
     const sedesFiltradas = useMemo(() => {
@@ -212,14 +254,11 @@ const ReporteAsistenciaAula: React.FC = () => {
         }
     };
 
-    // Datos filtrados
+    // Datos ya están filtrados por el backend, solo aplicamos filtro de rango si es necesario
     const datosFiltrados = useMemo(() => {
         if (errorFechas) return [];
-
-        // En producción, aquí filtrarías por aula seleccionada
-        // Por ahora mostramos todos los datos mock
-        return filtrarPorRango(asistenciaDetalle, filtros.fecha_desde, filtros.fecha_hasta);
-    }, [asistenciaDetalle, filtros, errorFechas]);
+        return asistenciaDetalle;
+    }, [asistenciaDetalle, errorFechas]);
 
     // Estadísticas
     const estadisticas = useMemo(() => {
@@ -382,7 +421,14 @@ const ReporteAsistenciaAula: React.FC = () => {
 
                 {/* Tabla de resultados */}
                 {puedeGenerarReporte ? (
-                    datosFiltrados.length > 0 ? (
+                    loading.reporte ? (
+                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-200">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                                <p className="text-gray-600 font-medium">Cargando reporte...</p>
+                            </div>
+                        </div>
+                    ) : datosFiltrados.length > 0 ? (
                         <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm animate-fadeIn">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
@@ -408,11 +454,13 @@ const ReporteAsistenciaAula: React.FC = () => {
                                                 key={idx}
                                                 className={`transition-colors hover:bg-blue-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                                             >
-                                                <td className="px-4 py-3 text-sm font-bold text-blue-700">Sem. {dato.semana}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-700">{dato.fecha_real}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-700">{dato.nombre_tutor}</td>
+                                                <td className="px-4 py-3 text-sm font-bold text-blue-700">Sem. {dato.semana_numero}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-700">{formatearFecha(dato.fecha_real)}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-700">{dato.tutor_nombre}</td>
                                                 <td className="px-4 py-3 text-sm text-gray-700">{dato.dia_semana}</td>
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-800">{dato.horario}</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-800">
+                                                    {dato.hora_inicio.slice(0, 5)} - {dato.hora_fin.slice(0, 5)}
+                                                </td>
                                                 <td className="px-4 py-3 text-center">
                                                     {dato.es_festivo ? (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-700 text-xs font-semibold">
@@ -424,7 +472,7 @@ const ReporteAsistenciaAula: React.FC = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    {dato.hubo_clase ? (
+                                                    {dato.clase_dictada ? (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 border border-green-300 text-green-700 text-xs font-semibold">
                                                             <CheckCircle2 className="w-3 h-3" />
                                                             Sí
@@ -436,10 +484,10 @@ const ReporteAsistenciaAula: React.FC = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-center text-sm font-semibold text-green-700">{dato.horas_dictadas}</td>
-                                                <td className="px-4 py-3 text-center text-sm font-semibold text-red-700">{dato.horas_no_dictadas}</td>
+                                                <td className="px-4 py-3 text-center text-sm font-semibold text-green-700">{formatearHoras(dato.horas_dictadas)}</td>
+                                                <td className="px-4 py-3 text-center text-sm font-semibold text-red-700">{formatearHoras(dato.horas_no_dictadas)}</td>
                                                 <td className="px-4 py-3 text-sm text-gray-700">
-                                                    {dato.motivo_no_clase || <span className="text-gray-400">—</span>}
+                                                    {dato.motivo_inasistencia || <span className="text-gray-400">—</span>}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     {dato.hubo_reposicion ? (
@@ -452,7 +500,7 @@ const ReporteAsistenciaAula: React.FC = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-blue-700 font-medium">
-                                                    {dato.fecha_reposicion || <span className="text-gray-400">—</span>}
+                                                    {dato.fecha_reposicion ? formatearFecha(dato.fecha_reposicion) : <span className="text-gray-400">—</span>}
                                                 </td>
                                             </tr>
                                         ))}
@@ -466,6 +514,11 @@ const ReporteAsistenciaAula: React.FC = () => {
                             <p className="text-gray-500 font-medium">No hay datos para el rango de fechas seleccionado</p>
                         </div>
                     )
+                ) : error ? (
+                    <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
+                        <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                        <p className="text-red-600 font-medium">{error}</p>
+                    </div>
                 ) : (
                     <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                         <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-3" />

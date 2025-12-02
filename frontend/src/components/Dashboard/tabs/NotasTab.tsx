@@ -3,8 +3,17 @@ import { useAuth } from '../../../context/AuthContext';
 import type { Personal } from '../../../types/personal';
 import type { Aula } from '../../../types/aula';
 import type { Estudiante } from '../../../types/estudiante';
-import type { TutorAula } from '../../../types/asignaciones';
 import type { Componente, Nota } from '../../../types/nota';
+import type { Periodo } from '../../../types/periodo';
+
+// Import services
+import { personalService } from '../../../services/api/personal.service';
+import { aulasService } from '../../../services/api/aulas.service';
+import { estudiantesService } from '../../../services/api/estudiantes.service';
+import { componentesService } from '../../../services/api/componentes.service';
+import { tutorAulaService } from '../../../services/api/tutor-aula.service';
+import { notasService } from '../../../services/api/notas.service';
+import { periodosService } from '../../../services/api/periodos.service';
 
 import NotasForm from './NotasForm';
 
@@ -25,147 +34,20 @@ import {
 } from 'lucide-react';
 
 type TutorFilter = number | 'none';
-type ProgramaFilter = 'all' | 'INSIDECLASSROOM' | 'OUTSIDECLASSROOM';
-
-// Datos de prueba
-const mockTutores: Personal[] = [
-  {
-    id: 1,
-    nombres: 'Laura',
-    apellidos: 'Rodríguez',
-    correo: 'laura.rod@globalenglish.edu.co',
-    telefono: '3002223344',
-    tipo_doc: 1,
-    num_doc: '1012345678',
-    id_rol: 2,
-  },
-  {
-    id: 3,
-    nombres: 'Carlos',
-    apellidos: 'Martínez',
-    correo: 'carlos.mtz@globalenglish.edu.co',
-    telefono: '3003334455',
-    tipo_doc: 1,
-    num_doc: '1009876543',
-    id_rol: 2,
-  },
-];
-
-const mockAulas: Aula[] = [
-  { id: 1, grado: 4, grupo: 'A', id_sede: 1 },
-  { id: 2, grado: 5, grupo: 'B', id_sede: 1 },
-  { id: 3, grado: 9, grupo: 'A', id_sede: 2 },
-];
-
-const mockTutorAula: TutorAula[] = [
-  { id: 1, id_aula: 1, id_tutor: 1, fecha_asignado: '2025-02-01', fecha_desasignado: null },
-  { id: 2, id_aula: 3, id_tutor: 3, fecha_asignado: '2025-02-10', fecha_desasignado: null },
-];
-
-const mockEstudiantes: Estudiante[] = [
-  {
-    id: 1,
-    nombres: 'Maria José',
-    apellidos: 'Aroca Franco',
-    tipo_doc: 2,
-    num_doc: '200194043',
-    id_aula: 1,
-    score_in: 78,
-    score_out: 85,
-  },
-  {
-    id: 2,
-    nombres: 'Ana',
-    apellidos: 'García López',
-    tipo_doc: 3,
-    num_doc: '202000111',
-    id_aula: 1,
-    score_in: 82,
-    score_out: 90,
-  },
-  {
-    id: 3,
-    nombres: 'Pepito',
-    apellidos: 'Pérez Díaz',
-    tipo_doc: 3,
-    num_doc: '202000222',
-    id_aula: 3,
-    score_in: 70,
-    score_out: 79,
-  },
-];
-
-const mockComponentes: Componente[] = [
-  {
-    id: 1,
-    nombre: 'Inside – Participación',
-    tipo_programa: 'INSIDECLASSROOM',
-    porcentaje: 30,
-    id_periodo: 1,
-  },
-  {
-    id: 2,
-    nombre: 'Inside – Evaluación final',
-    tipo_programa: 'INSIDECLASSROOM',
-    porcentaje: 70,
-    id_periodo: 1,
-  },
-  {
-    id: 3,
-    nombre: 'Outside – Proyecto',
-    tipo_programa: 'OUTSIDECLASSROOM',
-    porcentaje: 40,
-    id_periodo: 1,
-  },
-  {
-    id: 4,
-    nombre: 'Outside – Presentación oral',
-    tipo_programa: 'OUTSIDECLASSROOM',
-    porcentaje: 60,
-    id_periodo: 1,
-  },
-];
 
 const NotasTab: React.FC = () => {
-  const [tutores] = useState<Personal[]>(mockTutores);
-  const [aulas] = useState<Aula[]>(mockAulas);
-  const [tutorAula] = useState<TutorAula[]>(mockTutorAula);
-  const [estudiantes] = useState<Estudiante[]>(mockEstudiantes);
-  const [componentes] = useState<Componente[]>(mockComponentes);
+  // Data states
+  const [tutores, setTutores] = useState<Personal[]>([]);
+  const [aulas, setAulas] = useState<Aula[]>([]);
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
+  const [periodos, setPeriodos] = useState<Periodo[]>([]);
+  const [componentes, setComponentes] = useState<Componente[]>([]);
 
   const { usuario, rol } = useAuth();
 
   const [tutorActivoId, setTutorActivoId] = useState<TutorFilter>('none');
-
-  // Efecto para inicializar el tutor activo
-  useEffect(() => {
-    if (rol === 'TUTOR' && usuario) {
-      if (typeof usuario === 'string') {
-        let tutorEncontrado = tutores.find(t => t.correo === usuario);
-
-        if (!tutorEncontrado) {
-          const termino = usuario.toLowerCase();
-          tutorEncontrado = tutores.find(t =>
-            t.nombres.toLowerCase().includes(termino) ||
-            t.apellidos.toLowerCase().includes(termino) ||
-            `${t.nombres} ${t.apellidos}`.toLowerCase().includes(termino)
-          );
-        }
-
-        if (tutorEncontrado) {
-          setTutorActivoId(tutorEncontrado.id);
-        } else {
-          console.warn('No se encontró coincidencia exacta para el usuario en NotasTab, usando fallback ID 1');
-          setTutorActivoId(1);
-        }
-      }
-      else if ((usuario as any).id) {
-        setTutorActivoId((usuario as any).id);
-      }
-    }
-  }, [rol, usuario, tutores]);
   const [aulaIdSeleccionada, setAulaIdSeleccionada] = useState<number | 0>(0);
-  const [programaFilter, setProgramaFilter] = useState<ProgramaFilter>('all');
+  const [periodoIdSeleccionado, setPeriodoIdSeleccionado] = useState<number | 0>(0);
   const [componenteIdSeleccionado, setComponenteIdSeleccionado] = useState<number | 0>(0);
   const [searchEst, setSearchEst] = useState('');
 
@@ -177,6 +59,139 @@ const NotasTab: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Load tutores and periodos on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [tutoresData, periodosData] = await Promise.all([
+          personalService.getTutores(),
+          periodosService.getAll(),
+        ]);
+        setTutores(tutoresData);
+        setPeriodos(periodosData);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
+    };
+    loadInitialData();
+  }, []);
+
+  // Auto-select tutor
+  useEffect(() => {
+    if (tutores.length > 0) {
+      // Auto-seleccionar tutor si es TUTOR logueado
+      if (rol === 'TUTOR' && usuario) {
+        const correo = typeof usuario === 'string' ? usuario : (usuario as any).correo;
+        const tutorEncontrado = tutores.find(t => t.correo === correo);
+        if (tutorEncontrado) {
+          setTutorActivoId(tutorEncontrado.id);
+        } else {
+          setTutorActivoId(tutores[0].id);
+        }
+      } else {
+        // Para ADMIN/ADMINISTRATIVO, seleccionar el primer tutor
+        setTutorActivoId(tutores[0].id);
+      }
+    }
+  }, [rol, usuario, tutores]);
+
+  // Load aulas when tutor is selected
+  useEffect(() => {
+    if (tutorActivoId === 'none') {
+      setAulas([]);
+      return;
+    }
+
+    const loadAulasYRelaciones = async () => {
+      try {
+        // Get tutor-aula relations
+        const relaciones = await tutorAulaService.getHistoricoPorTutor(tutorActivoId as number);
+
+        // Filter active relations
+        const relacionesActivas = relaciones.filter(r => !r.fecha_desasignado);
+
+        // Get aulas details
+        const allAulas = await aulasService.getAll();
+        const aulasDelTutor = allAulas.filter(a =>
+          relacionesActivas.some(r => r.id_aula === a.id)
+        );
+        setAulas(aulasDelTutor);
+      } catch (error) {
+        console.error('Error loading aulas:', error);
+      }
+    };
+
+    loadAulasYRelaciones();
+  }, [tutorActivoId]);
+
+  // Load estudiantes when aula is selected
+  useEffect(() => {
+    if (!aulaIdSeleccionada) {
+      setEstudiantes([]);
+      return;
+    }
+
+    const loadEstudiantes = async () => {
+      try {
+        const allEstudiantes = await estudiantesService.getAll();
+        // Filter students in this aula
+        const estudiantesDelAula = allEstudiantes.filter(e => e.aula_actual_id === aulaIdSeleccionada);
+        setEstudiantes(estudiantesDelAula);
+      } catch (error) {
+        console.error('Error loading estudiantes:', error);
+      }
+    };
+
+    loadEstudiantes();
+  }, [aulaIdSeleccionada]);
+
+  // Load componentes when aula and periodo are selected
+  useEffect(() => {
+    if (!aulaIdSeleccionada || !periodoIdSeleccionado) {
+      setComponentes([]);
+      return;
+    }
+
+    const loadComponentes = async () => {
+      try {
+        const aula = aulas.find(a => a.id === aulaIdSeleccionada);
+        if (!aula) return;
+
+        // Determine tipo_programa from grade
+        const tipoPrograma = (aula.grado === 4 || aula.grado === 5) ? 1 : 2;
+
+        const componentes = await componentesService.getByPeriodo(periodoIdSeleccionado, tipoPrograma);
+        setComponentes(componentes);
+      } catch (error) {
+        console.error('Error loading componentes:', error);
+      }
+    };
+
+    loadComponentes();
+  }, [aulaIdSeleccionada, periodoIdSeleccionado, aulas]);
+
+  // Load existing notas when aula and componente are selected
+  useEffect(() => {
+    if (!aulaIdSeleccionada || !componenteIdSeleccionado) {
+      setNotasGuardadas([]);
+      return;
+    }
+
+    const loadNotas = async () => {
+      try {
+        const notas = await notasService.getAll({
+          id_aula: aulaIdSeleccionada,
+          id_componente: componenteIdSeleccionado,
+        });
+        setNotasGuardadas(notas);
+      } catch (error) {
+        console.error('Error loading notas:', error);
+      }
+    };
+
+    loadNotas();
+  }, [aulaIdSeleccionada, componenteIdSeleccionado]);
+
   const tutorActivo = useMemo(
     () =>
       tutorActivoId === 'none'
@@ -185,14 +200,6 @@ const NotasTab: React.FC = () => {
     [tutores, tutorActivoId],
   );
 
-  const aulasDelTutor = useMemo(() => {
-    if (!tutorActivo) return [];
-    const idsAulas = tutorAula
-      .filter((ta) => ta.id_tutor === tutorActivo.id && !ta.fecha_desasignado)
-      .map((ta) => ta.id_aula);
-    return aulas.filter((a) => idsAulas.includes(a.id));
-  }, [tutorActivo, tutorAula, aulas]);
-
   const aulaSeleccionada = useMemo(
     () =>
       aulaIdSeleccionada === 0
@@ -200,11 +207,6 @@ const NotasTab: React.FC = () => {
         : aulas.find((a) => a.id === aulaIdSeleccionada) ?? null,
     [aulas, aulaIdSeleccionada],
   );
-
-  const componentesFiltrados = useMemo(() => {
-    if (programaFilter === 'all') return componentes;
-    return componentes.filter((c) => c.tipo_programa === programaFilter);
-  }, [componentes, programaFilter]);
 
   const componenteSeleccionado = useMemo(
     () =>
@@ -216,7 +218,7 @@ const NotasTab: React.FC = () => {
 
   const estudiantesDelAula = useMemo(() => {
     const base = aulaSeleccionada
-      ? estudiantes.filter((e) => e.id_aula === aulaSeleccionada.id)
+      ? estudiantes.filter((e) => e.aula_actual_id === aulaSeleccionada.id)
       : [];
 
     const termino = searchEst.toLowerCase().trim();
@@ -224,8 +226,8 @@ const NotasTab: React.FC = () => {
 
     return base.filter(
       (e) =>
-        `${e.nombres} ${e.apellidos}`.toLowerCase().includes(termino) ||
-        e.num_doc.toLowerCase().includes(termino),
+        `${e.nombre} ${e.apellidos}`.toLowerCase().includes(termino) ||
+        e.codigo.toLowerCase().includes(termino),
     );
   }, [estudiantes, aulaSeleccionada, searchEst]);
 
@@ -238,7 +240,7 @@ const NotasTab: React.FC = () => {
       estudiantesDelAula.some((e) => e.id === n.id_estudiante),
     );
     if (notasDelComp.length === 0) return 0;
-    const suma = notasDelComp.reduce((acc, n) => acc + n.valor, 0);
+    const suma = notasDelComp.reduce((acc, n) => acc + Number(n.valor), 0);
     return Math.round((suma / notasDelComp.length) * 10) / 10;
   }, [componenteSeleccionado, estudiantesDelAula, notasGuardadas]);
 
@@ -265,14 +267,18 @@ const NotasTab: React.FC = () => {
 
   const handleChangeAula = (value: string) => {
     setAulaIdSeleccionada(value === '0' ? 0 : Number(value));
+    setPeriodoIdSeleccionado(0); // Reset periodo al cambiar aula
+    setComponenteIdSeleccionado(0); // Reset componente al cambiar aula
     resetForm();
   };
 
-  const handleChangePrograma = (value: string) => {
-    setProgramaFilter(value as ProgramaFilter);
-    setComponenteIdSeleccionado(0);
+  const handleChangePeriodo = (value: string) => {
+    setPeriodoIdSeleccionado(value === '0' ? 0 : Number(value));
+    setComponenteIdSeleccionado(0); // Reset componente al cambiar periodo
     resetForm();
   };
+
+  // const handleChangePrograma = ... // Removed
 
   const handleChangeComponente = (value: string) => {
     setComponenteIdSeleccionado(value === '0' ? 0 : Number(value));
@@ -294,8 +300,8 @@ const NotasTab: React.FC = () => {
   };
 
   const validarNotas = (): string | null => {
-    if (!tutorActivo || !aulaSeleccionada || !componenteSeleccionado) {
-      return 'Debes seleccionar tutor, aula y componente antes de guardar.';
+    if (!tutorActivo || !aulaSeleccionada || !periodoIdSeleccionado || !componenteSeleccionado) {
+      return 'Debes seleccionar tutor, aula, periodo y componente antes de guardar.';
     }
     if (estudiantesDelAula.length === 0) {
       return 'No hay estudiantes en el aula seleccionada.';
@@ -309,7 +315,7 @@ const NotasTab: React.FC = () => {
         tieneAlMenosUnaNota = true;
         if (typeof n.valor === 'number') {
           if (n.valor < 0 || n.valor > 100) {
-            return `La nota de ${est.nombres} ${est.apellidos} debe estar entre 0 y 100.`;
+            return `La nota de ${est.nombre} ${est.apellidos} debe estar entre 0 y 100.`;
           }
         }
       }
@@ -322,7 +328,7 @@ const NotasTab: React.FC = () => {
     return null;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const error = validarNotas();
     if (error) {
@@ -335,29 +341,43 @@ const NotasTab: React.FC = () => {
     setSaveError(null);
     setIsSaving(true);
 
-    const nuevosRegistros: Nota[] = [];
+    try {
+      // Create array of promises to save all notas
+      const savePromises: Promise<any>[] = [];
 
-    estudiantesDelAula.forEach((est) => {
-      const n = notasState[est.id];
-      if (!n || n.valor === '') return;
+      for (const est of estudiantesDelAula) {
+        const n = notasState[est.id];
+        if (!n || n.valor === '') continue;
 
-      const notaFinal: Nota = {
-        id: notasGuardadas.length + nuevosRegistros.length + Math.floor(Math.random() * 10000),
-        valor: Number(n.valor),
-        comentario: n.comentario && n.comentario.trim() !== '' ? n.comentario.trim() : null,
-        id_tutor: tutorActivo.id,
-        id_comp: componenteSeleccionado.id,
-        id_estudiante: est.id,
-      };
+        const payload = {
+          id_estudiante: est.id,
+          id_componente: componenteSeleccionado.id,
+          id_tutor: tutorActivo.id,
+          valor: Number(n.valor),
+          comentario: n.comentario && n.comentario.trim() !== '' ? n.comentario.trim() : undefined,
+        };
 
-      nuevosRegistros.push(notaFinal);
-    });
+        savePromises.push(notasService.create(payload));
+      }
 
-    setTimeout(() => {
-      setNotasGuardadas((prev) => [...prev, ...nuevosRegistros]);
-      setIsSaving(false);
+      // Save all in parallel
+      await Promise.all(savePromises);
+
+      // Reload notas from server to display saved data
+      const updatedNotas = await notasService.getAll({
+        id_aula: aulaIdSeleccionada,
+        id_componente: componenteIdSeleccionado,
+      });
+      setNotasGuardadas(updatedNotas);
+
+      // Clear form
       resetForm();
-    }, 500);
+    } catch (error) {
+      console.error('Error saving notas:', error);
+      setSaveError('Error al guardar las notas. Por favor intenta de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Renders
@@ -379,7 +399,7 @@ const NotasTab: React.FC = () => {
 
       <CardContent>
         <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl animate-fadeIn">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Tutor
@@ -387,21 +407,41 @@ const NotasTab: React.FC = () => {
               <select
                 value={tutorActivoId === 'none' ? 'none' : tutorActivoId}
                 onChange={(e) => handleChangeTutor(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all"
+                disabled={rol === 'TUTOR' || tutores.length === 0}
+                className={`w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 font-medium transition-all hover:border-green-300 ${rol === 'TUTOR' || tutores.length === 0 ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : 'bg-white'}`}
               >
                 <option value="none">Selecciona un tutor</option>
                 {tutores.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.nombres} {t.apellidos}
+                    {t.nombre} {t.apellido}
                   </option>
                 ))}
               </select>
+              {rol === 'TUTOR' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Como tutor, solo puedes gestionar las notas de tus propias aulas.
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Aula del tutor
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Aula del tutor
+                </label>
+                {aulaSeleccionada && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${aulaSeleccionada.grado === 4 || aulaSeleccionada.grado === 5
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}
+                  >
+                    {aulaSeleccionada.grado === 4 || aulaSeleccionada.grado === 5
+                      ? 'INSIDECLASSROOM'
+                      : 'OUTSIDECLASSROOM'}
+                  </span>
+                )}
+              </div>
               <select
                 value={aulaIdSeleccionada || 0}
                 onChange={(e) => handleChangeAula(e.target.value)}
@@ -409,7 +449,7 @@ const NotasTab: React.FC = () => {
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value={0}>Selecciona un aula</option>
-                {aulasDelTutor.map((a) => (
+                {aulas.map((a) => (
                   <option key={a.id} value={a.id}>
                     Grado {a.grado}°{a.grupo}
                   </option>
@@ -419,22 +459,23 @@ const NotasTab: React.FC = () => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Programa
+                Periodo académico
               </label>
               <select
-                value={programaFilter}
-                onChange={(e) => handleChangePrograma(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all"
+                value={periodoIdSeleccionado || 0}
+                onChange={(e) => handleChangePeriodo(e.target.value)}
+                disabled={!aulaSeleccionada}
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="all">Todos los programas</option>
-                <option value="INSIDECLASSROOM">Inside Classroom</option>
-                <option value="OUTSIDECLASSROOM">Outside Classroom</option>
+                <option value={0}>Selecciona un periodo</option>
+                {periodos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.anho}-{p.numero}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
 
-          {/* Componente y búsqueda */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Componente del período
@@ -442,11 +483,11 @@ const NotasTab: React.FC = () => {
               <select
                 value={componenteIdSeleccionado || 0}
                 onChange={(e) => handleChangeComponente(e.target.value)}
-                disabled={!aulaSeleccionada}
+                disabled={!aulaSeleccionada || !periodoIdSeleccionado}
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 bg-white font-medium hover:border-green-300 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value={0}>Selecciona un componente</option>
-                {componentesFiltrados.map((c) => (
+                {componentes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre} ({c.porcentaje}%)
                   </option>
@@ -454,7 +495,7 @@ const NotasTab: React.FC = () => {
               </select>
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Buscar estudiante
               </label>
@@ -464,7 +505,7 @@ const NotasTab: React.FC = () => {
                   type="text"
                   value={searchEst}
                   onChange={(e) => setSearchEst(e.target.value)}
-                  placeholder="Por nombre, apellido o documento..."
+                  placeholder="Buscar..."
                   className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 hover:border-green-300 transition-all"
                 />
               </div>
@@ -479,6 +520,7 @@ const NotasTab: React.FC = () => {
           componente={componenteSeleccionado}
           estudiantes={estudiantesDelAula}
           notas={notasState}
+          notasGuardadas={notasGuardadas} // Pass existing notes
           isSaving={isSaving}
           error={saveError}
           onChangeValor={handleChangeValor}

@@ -189,15 +189,15 @@ const EstudiantesTab: React.FC = () => {
       <CardHeader>
         <div className="flex justify-between items-start gap-4 w-full">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-6 h-6 text-green-600" />
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <Users className="w-6 h-6 text-blue-600" />
               Estudiantes
             </CardTitle>
-            <CardDescription>Gestión de estudiantes del programa</CardDescription>
+            <CardDescription className="text-blue-600/80">Gestión de estudiantes del programa</CardDescription>
           </div>
           <button
             onClick={handleCreate}
-            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md transform hover:scale-105 duration-200"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all hover:shadow-lg whitespace-nowrap flex items-center gap-2 shadow-md transform hover:scale-105 duration-200"
           >
             <Plus className="w-5 h-5" />
             Agregar Estudiante
@@ -209,7 +209,7 @@ const EstudiantesTab: React.FC = () => {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center gap-2 text-gray-600">
-              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               Cargando estudiantes...
             </div>
           </div>
@@ -217,14 +217,14 @@ const EstudiantesTab: React.FC = () => {
           <>
             {/* Search */}
             <div className="mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <div className="relative group">
+                <Search className="absolute left-3 top-3 w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" />
                 <input
                   type="text"
                   placeholder="Buscar por código, nombre o apellidos..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all hover:border-green-300"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -232,22 +232,22 @@ const EstudiantesTab: React.FC = () => {
             {/* Table */}
             <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-green-50 to-green-100 border-b-2 border-green-200">
+                <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Código</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Nombre</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Tipo Doc</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Institución</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Aula</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Score IN</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Score OUT</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-green-900 uppercase tracking-wider">Acciones</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Código</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Nombre</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Tipo Doc</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Institución</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Aula</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Score IN</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Score OUT</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-blue-900 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {filteredEstudiantes.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-gray-500 italic">
+                      <td colSpan={8} className="px-4 py-12 text-center text-gray-500 italic">
                         {search
                           ? 'No se encontraron estudiantes con ese criterio'
                           : 'No hay estudiantes registrados. Haz clic en "Agregar Estudiante" para comenzar.'}
@@ -255,7 +255,7 @@ const EstudiantesTab: React.FC = () => {
                     </tr>
                   ) : (
                     filteredEstudiantes.map((e) => (
-                      <tr key={e.id} className="hover:bg-green-50 transition-colors border-b border-gray-100">
+                      <tr key={e.id} className="hover:bg-blue-50/50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{e.codigo}</td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{e.nombre} {e.apellidos}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{getTipoDocLabel(e.tipo_doc)}</td>
@@ -267,21 +267,21 @@ const EstudiantesTab: React.FC = () => {
                           <div className="flex justify-center gap-1">
                             <button
                               onClick={() => handleEdit(e)}
-                              className="p-2 hover:bg-amber-100 rounded-lg transition-colors text-amber-600 hover:text-amber-700"
+                              className="p-2 hover:bg-amber-50 rounded-lg transition-colors text-amber-600 hover:text-amber-700"
                               title="Editar"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleMoverAula(e)}
-                              className="p-2 hover:bg-green-100 rounded-lg transition-colors text-green-600 hover:text-green-700"
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600 hover:text-blue-700"
                               title={e.aula_actual_id ? 'Mover de aula' : 'Asignar aula'}
                             >
                               <MoveRight className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(e.id)}
-                              className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600 hover:text-red-700"
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600 hover:text-red-700"
                               title="Eliminar"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -299,9 +299,9 @@ const EstudiantesTab: React.FC = () => {
 
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-gray-100">
+              <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
                 {editingId ? 'Editar' : 'Nuevo'} Estudiante
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -311,7 +311,7 @@ const EstudiantesTab: React.FC = () => {
                     type="text"
                     value={formData.codigo}
                     onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -321,7 +321,7 @@ const EstudiantesTab: React.FC = () => {
                     type="text"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -331,7 +331,7 @@ const EstudiantesTab: React.FC = () => {
                     type="text"
                     value={formData.apellidos}
                     onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -340,7 +340,7 @@ const EstudiantesTab: React.FC = () => {
                   <select
                     value={formData.tipo_doc}
                     onChange={(e) => setFormData({ ...formData, tipo_doc: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   >
                     <option value={0}>Seleccione...</option>
@@ -358,7 +358,7 @@ const EstudiantesTab: React.FC = () => {
                       max="100"
                       value={formData.score_in ?? ''}
                       onChange={(e) => setFormData({ ...formData, score_in: e.target.value ? Number(e.target.value) : undefined })}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="0-100"
                     />
                   </div>
@@ -370,22 +370,22 @@ const EstudiantesTab: React.FC = () => {
                       max="100"
                       value={formData.score_out ?? ''}
                       onChange={(e) => setFormData({ ...formData, score_out: e.target.value ? Number(e.target.value) : undefined })}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="0-100"
                     />
                   </div>
                 </div>
-                <div className="flex gap-3 justify-end pt-4 border-t-2 border-gray-200">
+                <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="px-5 py-2.5 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                    className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-all text-gray-700"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-semibold shadow-md hover:shadow-lg transition-all"
+                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-md hover:shadow-lg transition-all"
                   >
                     {editingId ? 'Actualizar' : 'Crear'}
                   </button>
@@ -397,16 +397,16 @@ const EstudiantesTab: React.FC = () => {
 
         {/* Mover Aula Modal */}
         {showMoverAula && estudianteMover && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-gray-100">
+              <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
                 {estudianteMover.aula_actual_id ? 'Mover' : 'Asignar'} Aula
               </h3>
-              <div className="mb-4 p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                <p className="text-sm font-semibold text-gray-700 mb-1">
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm font-semibold text-blue-900 mb-1">
                   {estudianteMover.nombre} {estudianteMover.apellidos}
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-blue-700">
                   Aula actual: <span className="font-semibold">{getAulaLabel(estudianteMover.aula_actual_id || null)}</span>
                 </p>
               </div>
@@ -415,7 +415,7 @@ const EstudiantesTab: React.FC = () => {
                 <select
                   value={aulaDestinoId}
                   onChange={(e) => setAulaDestinoId(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-all"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   <option value={0}>Seleccione...</option>
                   {aulas
@@ -438,16 +438,16 @@ const EstudiantesTab: React.FC = () => {
                     ))}
                 </select>
               </div>
-              <div className="flex gap-3 justify-end pt-4 border-t-2 border-gray-200">
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
                 <button
                   onClick={() => setShowMoverAula(false)}
-                  className="px-5 py-2.5 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-all text-gray-700"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleConfirmMover}
-                  className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-semibold shadow-md hover:shadow-lg transition-all"
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-md hover:shadow-lg transition-all"
                 >
                   Confirmar
                 </button>

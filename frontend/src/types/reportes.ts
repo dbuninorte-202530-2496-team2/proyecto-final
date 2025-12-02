@@ -27,19 +27,22 @@ export interface ReporteEstudianteAula {
  * Muestra el historial completo de clases con toda la información requerida
  */
 export interface AsistenciaAulaDetalle {
-  semana: number;                    // Número de semana del programa
-  fecha_real: string;                // Fecha de la clase (YYYY-MM-DD)
-  id_tutor: number;
-  nombre_tutor: string;
-  dia_semana: string;                // "Lunes", "Martes", etc.
-  horario: string;                   // "LU 07:00-07:45"
+  semana_numero: number;
+  fecha_inicio_semana: string;       // YYYY-MM-DD
+  fecha_fin_semana: string;          // YYYY-MM-DD
+  tutor_nombre: string;
+  tutor_id: number;
+  fecha_real: string;                // YYYY-MM-DD
   es_festivo: boolean;
-  hubo_clase: boolean;
-  horas_dictadas: number;            // Número de horas (equivalente)
-  horas_no_dictadas: number;         // Número de horas (equivalente)
-  motivo_no_clase: string | null;    // Motivo si no hubo clase
+  dia_semana: string;                // "Lunes", "Martes", etc.
+  hora_inicio: string;               // HH:mm:ss
+  hora_fin: string;                  // HH:mm:ss
+  clase_dictada: boolean;
+  horas_dictadas: number;
+  horas_no_dictadas: number;
+  motivo_inasistencia: string | null;
   hubo_reposicion: boolean;
-  fecha_reposicion: string | null;   // Fecha en que se repuso (YYYY-MM-DD)
+  fecha_reposicion: string | null;   // YYYY-MM-DD
 }
 
 /**
@@ -58,16 +61,17 @@ export interface AsistenciaAulaEstadisticas {
  * Muestra el historial completo de asistencia de un estudiante
  */
 export interface AsistenciaEstudianteDetalle {
-  fecha: string;                     // Fecha de la clase (YYYY-MM-DD)
-  id_aula: number;
-  aula: string;                      // "4°A", "9°B", etc.
-  id_tutor: number;
-  nombre_tutor: string;
-  horario: string;                   // "LU 07:00-07:45"
-  asistio: boolean;
-  id_motivo: number | null;
-  motivo: string | null;             // Motivo de ausencia si aplica
-  observaciones: string | null;
+  estudiante_nombre: string;
+  aula_grado: number;
+  aula_grupo: number; // 1=A, 2=B, etc. or just number if that's how it is
+  semana_numero: number;
+  fecha_real: string;                // YYYY-MM-DD
+  es_festivo: boolean;
+  dia_semana: string;
+  hora_inicio: string;               // HH:mm:ss
+  hora_fin: string;                  // HH:mm:ss
+  presente: boolean;
+  tutor_nombre: string;
 }
 
 /**
@@ -96,21 +100,27 @@ export interface ComponenteNota {
 
 /**
  * Boletín de calificaciones completo de un estudiante
+ * Retorna UNA SOLA fila con todos los componentes en un array
  */
 export interface BoletinEstudiante {
-  id_estudiante: number;
-  nombre_estudiante: string;
+  estudiante_id: number;
+  estudiante_codigo: string;
+  estudiante_nombre: string;
+  estudiante_apellidos: string;
+  tipo_documento: string;
   documento: string;
-  tipo_documento: string;            // "TI", "CC", etc.
-  institucion: string;
-  sede: string;
-  grado: number;                     // 4, 5, 9, 10
-  grupo: string;                     // "A", "B", etc.
-  programa: 'INSIDE' | 'OUTSIDE';
-  periodo: string;                   // Nombre del periodo
+  institucion_nombre: string;
+  sede_nombre: string;
+  grado: number;
+  grupo: number;
+  programa: string; // 'INSIDECLASSROOM' | 'OUTSIDECLASSROOM'
+  tipo_programa: number; // 1 = INSIDE, 2 = OUTSIDE
+  periodo_id: number;
+  periodo_nombre: string;
+  periodo_anho: number;
+  periodo_numero: number;
   componentes: ComponenteNota[];
-  nota_definitiva: number;           // Suma de notas ponderadas
-  estado_aprobacion: 'APROBADO' | 'APROBADO_CON_DIFICULTADES' | 'NO_APROBADO';
+  nota_definitiva: number;
 }
 
 /**
@@ -138,12 +148,9 @@ export interface FiltrosAsistenciaEstudiante {
 
 /**
  * Filtros para el boletín de calificaciones
+ * Solo requiere ID de estudiante - retorna todas las filas (una por periodo)
  */
 export interface FiltrosBoletinCalificaciones {
-  id_institucion: number | null;
-  id_sede: number | null;
-  id_aula: number | null;
   id_estudiante: number | null;
-  id_periodo: number | null;
 }
 

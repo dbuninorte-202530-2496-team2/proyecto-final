@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS nota(
 	FOREIGN KEY (id_tutor) REFERENCES personal(id),
 	FOREIGN KEY (id_comp) REFERENCES componente(id),
 	FOREIGN KEY (id_estudiante) REFERENCES estudiante(id),
-	CHECK (valor >= 0 AND valor <= 5),
+	CHECK (valor >= 0 AND valor <= 100),
 	UNIQUE (id_estudiante, id_comp)
 );
 

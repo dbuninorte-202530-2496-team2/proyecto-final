@@ -88,13 +88,7 @@ export class AsistenciaTutorService {
         }
       }
 
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(
-        `Error al crear la asistencia: ${error.message}`
-      );
+      this.handleDBExceptions(error)
     }
   }
 
@@ -117,9 +111,7 @@ export class AsistenciaTutorService {
       const result = await this.pool.query(query);
       return result.rows;
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Error al obtener las asistencias: ${error.message}`
-      );
+      this.handleDBExceptions(error)
     }
   }
 
@@ -147,12 +139,7 @@ export class AsistenciaTutorService {
 
       return result.rows[0];
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error al obtener la asistencia: ${error.message}`
-      );
+      this.handleDBExceptions(error)
     }
   }
 
@@ -160,10 +147,9 @@ export class AsistenciaTutorService {
     id: number,
     updateAsistenciaDto: UpdateAsistenciaTutDto
   ): Promise<AsistenciaTutEntity> {
-    // Verificar que existe
     await this.findOne(id);
 
-    const {
+    let {
       fecha_real,
       dictoClase,
       id_tutor,
@@ -174,54 +160,61 @@ export class AsistenciaTutorService {
     } = updateAsistenciaDto;
 
     try {
-      // Validar lógica de negocio si se actualiza dictoClase
+      // --- VALIDACIÓN DE NEGOCIO ---
       if (dictoClase !== undefined) {
         if (!dictoClase && !id_motivo) {
           throw new BadRequestException(
             'Si el tutor no dictó la clase, debe especificar un motivo'
           );
         }
+
         if (dictoClase && id_motivo) {
           throw new BadRequestException(
-            'Si el tutor dictó la clase, no debe especificar un motivo de inasistencia'
+            'Si el tutor dictó la clase, no debe especificar un motivo'
           );
+        }
+
+        // Si pasa de NO dictar -> dictar, forzar borrado del motivo Y fecha_reposicion
+        if (dictoClase === true) {
+          id_motivo = null;
+          fecha_reposicion = null;  // Forzar limpieza
         }
       }
 
+      // Construcción del query
+      // Tanto id_motivo como fecha_reposicion NO usan COALESCE
+      // Esto permite que se puedan borrar explícitamente enviando null
       const updateQuery = `
-        UPDATE asistenciaTut
-        SET
-          fecha_real = COALESCE($1, fecha_real),
-          dictoClase = COALESCE($2, dictoClase),
-          id_tutor = COALESCE($3, id_tutor),
-          id_aula = COALESCE($4, id_aula),
-          id_horario = COALESCE($5, id_horario),
-          id_motivo = COALESCE($6, id_motivo),
-          fecha_reposicion = COALESCE($7, fecha_reposicion)
-        WHERE id = $8
-        RETURNING *
-      `;
+      UPDATE asistenciaTut
+      SET
+        fecha_real = COALESCE($1, fecha_real),
+        dictoClase = COALESCE($2, dictoClase),
+        id_tutor = COALESCE($3, id_tutor),
+        id_aula = COALESCE($4, id_aula),
+        id_horario = COALESCE($5, id_horario),
+        id_motivo = $6,
+        fecha_reposicion = $7
+      WHERE id = $8
+      RETURNING *
+    `;
+
       const result = await this.pool.query(updateQuery, [
         fecha_real,
         dictoClase,
         id_tutor,
         id_aula,
         id_horario,
-        id_motivo,
-        fecha_reposicion,
+        id_motivo,           // puede ser null
+        fecha_reposicion,    // puede ser null
         id
       ]);
 
       return result.rows[0];
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error al actualizar la asistencia: ${error.message}`
-      );
+      this.handleDBExceptions(error);
     }
   }
+
 
   async findAsistenciasByTutor(
     id_tutor: number,
@@ -268,13 +261,103 @@ export class AsistenciaTutorService {
       const result = await this.pool.query(query, params);
       return result.rows;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error al obtener las asistencias del tutor: ${error.message}`
-      );
+      this.handleDBExceptions(error)
     }
+  }
+
+  async findClasesProgramadas(
+    id_tutor: number,
+    fecha_inicio: string,
+    fecha_fin: string
+  ): Promise<any[]> {
+    try {
+      // Verificar que el tutor existe
+      const tutorCheck = await this.pool.query('SELECT id FROM personal WHERE id = $1', [id_tutor]);
+      if (tutorCheck.rows.length === 0) {
+        throw new NotFoundException(`Tutor con id ${id_tutor} no encontrado`);
+      }
+
+      const query = `
+        SELECT 
+          ahs.fecha_programada,
+          ahs.id_aula,
+          CONCAT(a.grado, '°', a.grupo) AS aula_info,
+          se.nombre AS sede_nombre,
+          i.nombre AS institucion_nombre,
+          ahs.id_horario,
+          CONCAT(h.dia_sem, ' ', h.hora_ini, '-', h.hora_fin) AS horario_info,
+          ahs.id_semana,
+          at.id IS NOT NULL AS tiene_asistencia,
+          at.id AS id_asistencia,
+          at.dictoClase AS dicto_clase,
+          at.id_motivo,
+          m.descripcion AS descripcion_motivo,
+          at.fecha_reposicion
+        FROM tutor_aula ta
+        INNER JOIN aula_horario_sem ahs ON ta.id_aula = ahs.id_aula
+        INNER JOIN horario h ON ahs.id_horario = h.id
+        INNER JOIN aula a ON ahs.id_aula = a.id
+        INNER JOIN sede se ON a.id_sede = se.id
+        INNER JOIN institucion i ON se.id_inst = i.id
+        LEFT JOIN asistenciaTut at ON (
+          at.id_tutor = ta.id_tutor AND
+          at.id_aula = ahs.id_aula AND
+          at.id_horario = ahs.id_horario AND
+          at.id_semana = ahs.id_semana
+        )
+        LEFT JOIN motivo m ON at.id_motivo = m.id
+        WHERE ta.id_tutor = $1
+          AND ta.fecha_desasignado IS NULL
+          AND ahs.fecha_programada BETWEEN $2 AND $3
+        ORDER BY ahs.fecha_programada, h.hora_ini
+      `;
+
+      const result = await this.pool.query(query, [id_tutor, fecha_inicio, fecha_fin]);
+      return result.rows;
+    } catch (error) {
+      this.handleDBExceptions(error)
+    }
+  }
+
+  async getEarliestWeekDate(id_tutor: number): Promise<string | null> {
+    try {
+      // Verificar que el tutor existe
+      const tutorCheck = await this.pool.query('SELECT id FROM personal WHERE id = $1', [id_tutor]);
+      if (tutorCheck.rows.length === 0) {
+        throw new NotFoundException(`Tutor con id ${id_tutor} no encontrado`);
+      }
+
+      const query = `
+        SELECT MIN(s.fec_ini) as earliest_date
+        FROM semana s
+        INNER JOIN aula_horario_sem ahs ON ahs.id_semana = s.id
+        INNER JOIN tutor_aula ta ON ta.id_aula = ahs.id_aula
+        WHERE ta.id_tutor = $1
+          AND ta.fecha_desasignado IS NULL
+      `;
+
+      const result = await this.pool.query(query, [id_tutor]);
+
+      if (result.rows.length === 0 || !result.rows[0].earliest_date) {
+        return null;
+      }
+
+      // Formatear fecha a YYYY-MM-DD
+      const date = new Date(result.rows[0].earliest_date);
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      this.handleDBExceptions(error);
+    }
+  }
+
+  private handleDBExceptions(error: any): never {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    console.log(error)
+    throw new InternalServerErrorException(
+      `Error al obtener las clases programadas: ${error.message}`
+    );
   }
 
 

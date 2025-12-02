@@ -4,7 +4,7 @@ export class NotaEntity {
     @ApiProperty({ description: 'ID de la nota' })
     id: number;
 
-    @ApiProperty({ description: 'Valor de la nota (0 - 5)' })
+    @ApiProperty({ description: 'Valor de la nota (0 - 100)' })
     valor: number;
 
     @ApiProperty({ description: 'Comentario sobre la nota', nullable: true })

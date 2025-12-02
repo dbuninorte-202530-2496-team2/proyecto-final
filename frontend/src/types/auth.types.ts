@@ -9,6 +9,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   usuario: string | null;
   rol: UserRole | null;
-  login: (usuario: string, rol: UserRole, token: string) => void;
+  personalId: number | null;
+  login: (usuario: string, rol: UserRole, token: string, personalId: number) => void;
   logout: () => void;
 }
