@@ -27,6 +27,9 @@ export { motivoService } from './motivo.service';
 export type { Motivo, CreateMotivoDto, UpdateMotivoDto } from './motivo.service';
 export { festivoService } from './festivo.service';
 export type { Festivo, CreateFestivoDto, UpdateFestivoDto } from './festivo.service';
+export { reportesService } from './reportes.service';
+export type { AsistenciaTutorReporte, NotasTutorReporte, FiltroFechas } from './reportes.service';
+
 
 // Export API client for direct use if needed
 export { default as apiClient } from './api-client';

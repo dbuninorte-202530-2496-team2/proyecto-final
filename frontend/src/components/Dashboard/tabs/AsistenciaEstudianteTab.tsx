@@ -294,7 +294,7 @@ const AsistenciaEstudianteTab: React.FC = () => {
                     value={tutorSeleccionadoId}
                     onChange={(e) => setTutorSeleccionadoId(Number(e.target.value))}
                     disabled={rol === 'TUTOR' || tutores.length === 0}
-                    className="w-full px-4 py-2.5 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 shadow-sm transition-all hover:border-blue-300"
+                    className={`w-full px-4 py-2.5 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all hover:border-blue-300 ${rol === 'TUTOR' || tutores.length === 0 ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : 'bg-white text-gray-700'}`}
                   >
                     {tutores.map(t => (
                       <option key={t.id} value={t.id}>{t.nombre} {t.apellido}</option>

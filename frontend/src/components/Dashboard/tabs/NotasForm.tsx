@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Estudiante } from '../../../types/estudiante';
-import type { Componente } from '../../../types/nota';
+import type { Componente, Nota } from '../../../types/nota';
 import type { Aula } from '../../../types/aula';
 import type { Personal } from '../../../types/personal';
 import { AlertCircle, CheckCircle2, BookOpen, FileText, Loader } from 'lucide-react';
@@ -16,6 +16,7 @@ interface NotasFormProps {
       comentario: string;
     };
   };
+  notasGuardadas: Nota[]; // New prop
   isSaving: boolean;
   error: string | null;
   onChangeValor: (idEstudiante: number, valor: number | '') => void;
@@ -29,6 +30,7 @@ const NotasForm: React.FC<NotasFormProps> = ({
   componente,
   estudiantes,
   notas,
+  notasGuardadas,
   isSaving,
   error,
   onChangeValor,
@@ -38,34 +40,54 @@ const NotasForm: React.FC<NotasFormProps> = ({
   // Validaciones 
   const notasValidadas = useMemo(() => {
     const validadas: {
-      [id: number]: { valor: number | ''; comentario: string; error?: string };
+      [id: number]: { valor: number | ''; comentario: string; error?: string; isModified: boolean; isSaved: boolean };
     } = {};
 
     estudiantes.forEach((est) => {
-      const nota = notas[est.id] ?? { valor: '', comentario: '' };
-      const errorMsg: string | undefined = 
-        nota.valor !== '' && (typeof nota.valor === 'number' && (nota.valor < 0 || nota.valor > 100))
+      const pending = notas[est.id];
+      // Buscar nota guardada para este estudiante y componente
+      const saved = notasGuardadas.find(n => n.id_estudiante === est.id && n.id_comp === componente?.id);
+
+      let valor: number | '' = '';
+      let comentario = '';
+      let isModified = false;
+      let isSaved = false;
+
+      if (pending) {
+        // Si hay cambios pendientes, tienen prioridad visual
+        valor = pending.valor;
+        comentario = pending.comentario;
+        isModified = true;
+      } else if (saved) {
+        // Si no hay pendientes, mostrar lo guardado
+        valor = saved.valor;
+        comentario = saved.comentario || '';
+        isSaved = true;
+      }
+
+      const errorMsg: string | undefined =
+        valor !== '' && (typeof valor === 'number' && (valor < 0 || valor > 100))
           ? 'Debe estar entre 0-100'
           : undefined;
 
-      validadas[est.id] = { ...nota, error: errorMsg };
+      validadas[est.id] = { valor, comentario, error: errorMsg, isModified, isSaved };
     });
 
     return validadas;
-  }, [notas, estudiantes]);
+  }, [notas, estudiantes, notasGuardadas, componente]);
 
   // Contadores en tiempo real
   const estadisticas = useMemo(() => {
     const conNotas = estudiantes.filter((e) => {
-      const n = notas[e.id];
+      const n = notasValidadas[e.id];
       return n && n.valor !== '';
     }).length;
-    
+
     const conError = Object.values(notasValidadas).filter((n) => n.error).length;
     const total = estudiantes.length;
 
     return { conNotas, conError, total };
-  }, [estudiantes, notas, notasValidadas]);
+  }, [estudiantes, notasValidadas]);
 
   // Determinar si el formulario es válido
   const isFormValid = useMemo(() => {
@@ -75,8 +97,8 @@ const NotasForm: React.FC<NotasFormProps> = ({
     return true;
   }, [estudiantes.length, estadisticas]);
 
-  const getInitials = (nombres: string, apellidos: string): string => {
-    const n = nombres.split(' ')[0]?.[0] ?? '';
+  const getInitials = (nombre: string, apellidos: string): string => {
+    const n = nombre.split(' ')[0]?.[0] ?? '';
     const a = apellidos.split(' ')[0]?.[0] ?? '';
     return (n + a).toUpperCase();
   };
@@ -86,7 +108,7 @@ const NotasForm: React.FC<NotasFormProps> = ({
       {/* Encabezado */}
       <div className="bg-gradient-to-r from-green-50 via-green-50 to-blue-50 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-green-100">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center text-white font-bold text-lg shadow-md">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
             {aula ? `${aula.grado}` : '–'}
           </div>
           <div className="flex flex-col">
@@ -97,7 +119,7 @@ const NotasForm: React.FC<NotasFormProps> = ({
               {aula ? `Grado ${aula.grado}°${aula.grupo}` : 'Aula no seleccionada'}
             </span>
             <span className="text-xs text-gray-600">
-              {tutor ? `Tutor: ${tutor.nombres} ${tutor.apellidos}` : 'Tutor no seleccionado'}
+              {tutor ? `Tutor: ${tutor.nombre} ${tutor.apellido || ''}` : 'Tutor no seleccionado'}
             </span>
           </div>
         </div>
@@ -138,27 +160,28 @@ const NotasForm: React.FC<NotasFormProps> = ({
               <tbody className="divide-y divide-gray-100">
                 {estudiantes.map((est, idx) => {
                   const notaData = notasValidadas[est.id];
-                  const hasNota = notaData.valor !== '';
+                  // const hasNota = notaData.valor !== ''; // Removed unused
                   const hasError = !!notaData.error;
+                  const isSaved = notaData.isSaved;
+                  const isModified = notaData.isModified;
 
                   return (
                     <tr
                       key={est.id}
-                      className={`${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-green-50 transition-colors duration-150`}
+                      className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        } hover:bg-green-50 transition-colors duration-150`}
                     >
                       <td className="px-4 py-3 text-sm font-medium text-gray-600">{idx + 1}</td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">
-                            {getInitials(est.nombres, est.apellidos)}
+                            {getInitials(est.nombre, est.apellidos)}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              {est.nombres} {est.apellidos}
+                              {est.nombre} {est.apellidos}
                             </p>
-                            <p className="text-xs text-gray-500">{est.num_doc}</p>
+                            <p className="text-xs text-gray-500">{est.codigo}</p>
                           </div>
                         </div>
                       </td>
@@ -175,17 +198,21 @@ const NotasForm: React.FC<NotasFormProps> = ({
                                 e.target.value === '' ? '' : Number(e.target.value),
                               )
                             }
-                            className={`w-20 px-3 py-2 border-2 rounded-lg text-sm font-medium text-center transition-all ${
-                              hasError
-                                ? 'border-red-500 bg-red-50 text-red-700'
-                                : hasNota
-                                ? 'border-green-500 bg-green-50 text-green-700'
-                                : 'border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600'
-                            } focus:outline-none`}
+                            className={`w-20 px-3 py-2 border-2 rounded-lg text-sm font-medium text-center transition-all ${hasError
+                              ? 'border-red-500 bg-red-50 text-red-700'
+                              : isModified
+                                ? 'border-yellow-400 bg-yellow-50 text-gray-900 ring-1 ring-yellow-400' // Modificado
+                                : isSaved
+                                  ? 'border-green-200 bg-green-50 text-green-800 font-bold' // Guardado
+                                  : 'border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600'
+                              } focus:outline-none`}
                             placeholder="—"
                           />
-                          {hasNota && !hasError && (
+                          {isSaved && !isModified && !hasError && (
                             <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          )}
+                          {isModified && !hasError && (
+                            <div className="w-2 h-2 rounded-full bg-yellow-400" title="Modificado (sin guardar)" />
                           )}
                           {hasError && (
                             <AlertCircle className="w-4 h-4 text-red-600" />
@@ -215,21 +242,11 @@ const NotasForm: React.FC<NotasFormProps> = ({
 
         {/* Barra rápida de estadísticas */}
         {estudiantes.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 grid grid-cols-3 gap-4 text-center">
+          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-center text-center">
             <div>
-              <p className="text-xs text-gray-600 font-semibold">Notas Ingresadas</p>
-              <p className="text-lg font-bold text-green-700">{estadisticas.conNotas}/{estadisticas.total}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-semibold">Errores</p>
-              <p className={`text-lg font-bold ${estadisticas.conError > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                {estadisticas.conError}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-semibold">Completitud</p>
-              <p className="text-lg font-bold text-blue-700">
-                {Math.round((estadisticas.conNotas / estadisticas.total) * 100)}%
+              <p className="text-xs text-gray-600 font-semibold">Progreso</p>
+              <p className="text-lg font-bold text-green-700">
+                {estadisticas.conNotas}/{estadisticas.total} <span className="text-sm text-gray-500 font-normal">({Math.round((estadisticas.conNotas / estadisticas.total) * 100)}%)</span>
               </p>
             </div>
           </div>
@@ -248,11 +265,10 @@ const NotasForm: React.FC<NotasFormProps> = ({
           <button
             type="submit"
             disabled={isSaving || !isFormValid}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md ${
-              isFormValid && !isSaving
-                ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white hover:shadow-lg transform hover:scale-105'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md ${isFormValid && !isSaving
+              ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white hover:shadow-lg transform hover:scale-105'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
           >
             {isSaving ? (
               <>

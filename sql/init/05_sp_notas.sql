@@ -19,8 +19,9 @@ DECLARE
     v_tutor_actual INT;
     v_id_nota INT;
 BEGIN
-    IF p_valor < 0 OR p_valor > 5 THEN
-        RAISE EXCEPTION 'El valor de la nota debe estar entre 0 y 5';
+    -- Validar el valor de la nota
+    IF p_valor < 0 OR p_valor > 100 THEN
+        RAISE EXCEPTION 'El valor de la nota debe estar entre 0 y 100';
     END IF;
     
     v_id_aula := fn_obtener_aula_actual_estudiante(p_id_estudiante);

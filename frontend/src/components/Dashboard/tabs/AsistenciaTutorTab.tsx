@@ -405,7 +405,7 @@ const AsistenciaTutorTab: React.FC = () => {
                                 value={tutorSeleccionadoId}
                                 onChange={(e) => setTutorSeleccionadoId(Number(e.target.value))}
                                 disabled={rol === 'TUTOR' || tutores.length === 0}
-                                className={`w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 bg-white font-medium transition-all hover:border-indigo-300 ${rol === 'TUTOR' || tutores.length === 0 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                className={`w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 font-medium transition-all hover:border-indigo-300 ${rol === 'TUTOR' || tutores.length === 0 ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : 'bg-white'}`}
                             >
                                 {tutores.length === 0 ? (
                                     <option value={0}>Cargando...</option>
@@ -417,11 +417,6 @@ const AsistenciaTutorTab: React.FC = () => {
                                     ))
                                 )}
                             </select>
-                            {rol === 'TUTOR' && (
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Como tutor, solo puedes ver y registrar tu propia asistencia.
-                                </p>
-                            )}
                         </div>
 
                         {/* Fecha Desde */}

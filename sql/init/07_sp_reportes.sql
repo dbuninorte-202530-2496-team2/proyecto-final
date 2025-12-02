@@ -299,7 +299,11 @@ RETURNS TABLE (
     estudiante_nombre TEXT,
     aula_grado INT,
     aula_grupo INT,
+    sede_nombre TEXT,
+    institucion_nombre TEXT,
     componente_nombre TEXT,
+    periodo_anho INT,
+    periodo_numero INT,
     valor_nota NUMERIC,
     comentario TEXT
 ) AS $$
@@ -315,17 +319,95 @@ BEGIN
         (e.nombre || ' ' || e.apellidos) as estudiante_nombre,
         a.grado,
         a.grupo,
+        s.nombre as sede_nombre,
+        i.nombre as institucion_nombre,
         c.nombre as componente_nombre,
+        p.anho as periodo_anho,
+        p.numero as periodo_numero,
         n.valor,
         n.comentario
     FROM nota n
     INNER JOIN estudiante e ON n.id_estudiante = e.id
     INNER JOIN componente c ON n.id_comp = c.id
+    INNER JOIN periodo p ON c.id_periodo = p.id
     INNER JOIN estudiante_aula ea ON e.id = ea.id_estudiante
     INNER JOIN aula a ON ea.id_aula = a.id
+    INNER JOIN sede s ON a.id_sede = s.id
+    INNER JOIN institucion i ON s.id_inst = i.id
     WHERE n.id_tutor = p_id_tutor
       AND ea.fecha_desasignado IS NULL
     ORDER BY a.grado, a.grupo, e.apellidos;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Function: Reporte de asistencia del tutor - Historial de clases (Autogestión)
+-- Incluye TODAS las clases programadas (marcadas Y pendientes)
+CREATE OR REPLACE FUNCTION fn_reporte_asistencia_tutor(
+    p_id_tutor INT,
+    p_fecha_inicio DATE DEFAULT NULL,
+    p_fecha_fin DATE DEFAULT NULL
+)
+RETURNS TABLE (
+    fecha_real DATE,
+    dia_semana TEXT,
+    hora_inicio TIME,
+    hora_fin TIME,
+    aula_grado INT,
+    aula_grupo INT,
+    sede_nombre TEXT,
+    institucion_nombre TEXT,
+    dicto_clase BOOLEAN,
+    fecha_reposicion DATE,
+    motivo_descripcion TEXT,
+    estado TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ahs.fecha_programada as fecha_real,
+        CASE EXTRACT(DOW FROM ahs.fecha_programada)
+            WHEN 0 THEN 'Domingo'
+            WHEN 1 THEN 'Lunes'
+            WHEN 2 THEN 'Martes'
+            WHEN 3 THEN 'Miércoles'
+            WHEN 4 THEN 'Jueves'
+            WHEN 5 THEN 'Viernes'
+            WHEN 6 THEN 'Sábado'
+        END as dia_semana,
+        h.hora_ini as hora_inicio,
+        h.hora_fin as hora_fin,
+        a.grado as aula_grado,
+        a.grupo as aula_grupo,
+        s.nombre as sede_nombre,
+        i.nombre as institucion_nombre,
+        at.dictoClase as dicto_clase,
+        at.fecha_reposicion,
+        m.descripcion as motivo_descripcion,
+        -- Determine estado based on attendance data
+        CASE 
+            WHEN at.id IS NULL THEN 'PENDIENTE'
+            WHEN at.dictoClase THEN 'DICTADA'
+            WHEN at.fecha_reposicion IS NOT NULL THEN 'REPUESTA'
+            ELSE 'NO_DICTADA'
+        END as estado
+    FROM tutor_aula ta
+    INNER JOIN aula_horario_sem ahs ON ta.id_aula = ahs.id_aula
+    INNER JOIN horario h ON ahs.id_horario = h.id
+    INNER JOIN aula a ON ahs.id_aula = a.id
+    INNER JOIN sede s ON a.id_sede = s.id
+    INNER JOIN institucion i ON s.id_inst = i.id
+    LEFT JOIN asistenciaTut at ON (
+        at.id_tutor = ta.id_tutor AND
+        at.id_aula = ahs.id_aula AND
+        at.id_horario = ahs.id_horario AND
+        at.id_semana = ahs.id_semana
+    )
+    LEFT JOIN motivo m ON at.id_motivo = m.id
+    WHERE ta.id_tutor = p_id_tutor
+      AND ta.fecha_desasignado IS NULL
+      AND (p_fecha_inicio IS NULL OR ahs.fecha_programada >= p_fecha_inicio)
+      AND (p_fecha_fin IS NULL OR ahs.fecha_programada <= p_fecha_fin)
+    ORDER BY ahs.fecha_programada ASC, h.hora_ini;
 END;
 $$ LANGUAGE plpgsql STABLE;
 

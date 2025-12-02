@@ -64,6 +64,18 @@ export class ReportesService {
         }
     }
 
+    async obtenerAsistenciaTutor(id_tutor: number, fecha_inicio?: string, fecha_fin?: string): Promise<any[]> {
+        try {
+            const query = 'SELECT * FROM fn_reporte_asistencia_tutor($1, $2, $3)';
+            const result = await this.pool.query(query, [id_tutor, fecha_inicio || null, fecha_fin || null]);
+            return result.rows;
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException(`Error al obtener reporte de asistencia del tutor: ${error.message}`);
+        }
+    }
+
+
     async obtenerHorarioTutor(id_tutor: number, id_periodo: number): Promise<any[]> {
         try {
             const query = 'SELECT * FROM fn_horario_tutor($1, $2)';
