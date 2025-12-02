@@ -84,18 +84,15 @@ export const GestionUsuarios: React.FC = () => {
 
         try {
             if (editingUsername) {
-                // Update flow - usuario, contraseña y asignación de personal (solo si no tenía)
+                // Update flow - solo contraseña
                 const usuarioActual = usuarios.find(u => u.usuario === editingUsername);
-                const updateData: any = {
-                    usuario: formData.usuario
-                };
 
-                // Update password if provided
+                // Only send password update if provided
                 if (formData.contrasena) {
-                    updateData.contrasena = formData.contrasena;
+                    await usuariosService.update(editingUsername, {
+                        contrasena: formData.contrasena
+                    });
                 }
-
-                await usuariosService.update(editingUsername, updateData);
 
                 // Asignar personal si no tenía y se seleccionó uno
                 if (usuarioActual?.id_personal === 0 && formData.id_personal > 0) {
