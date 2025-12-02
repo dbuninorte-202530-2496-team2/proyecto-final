@@ -1,8 +1,8 @@
 // Tabla COMPONENTE
 export interface Componente {
   id: number;
-  nombre: string;        
-  tipo_programa: 'INSIDECLASSROOM' | 'OUTSIDECLASSROOM';
+  nombre: string;
+  tipo_programa: number; // 1 = INSIDECLASSROOM, 2 = OUTSIDECLASSROOM
   porcentaje: number;    // peso dentro del periodo (0-100)
   id_periodo: number;
 }

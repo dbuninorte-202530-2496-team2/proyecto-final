@@ -52,16 +52,14 @@ export const ConfiguracionSemanas: React.FC = () => {
     const handleGenerarSemanas = async () => {
         if (!selectedPeriodoId || !generationConfig.startDate) return;
 
-        const confirmMessage = semanas.length > 0
-            ? `Este periodo ya tiene ${semanas.length} semanas. ¿Deseas eliminarlas y generar nuevas?`
-            : `¿Estás seguro de generar ${generationConfig.weeksCount} semanas?`;
+        // Prevent generation if weeks already exist (per enunciado.txt: calendar created only once)
+        if (semanas.length > 0) {
+            toast.error('Este periodo ya tiene semanas generadas. No se puede generar nuevamente.');
+            return;
+        }
 
-        if (window.confirm(confirmMessage)) {
+        if (window.confirm(`¿Estás seguro de generar ${generationConfig.weeksCount} semanas?`)) {
             try {
-                if (semanas.length > 0) {
-                    await periodosService.deleteSemanasByPeriodo(selectedPeriodoId);
-                }
-
                 await periodosService.generarSemanas(selectedPeriodoId, {
                     fec_ini: generationConfig.startDate,
                     cantidad_semanas: generationConfig.weeksCount
@@ -135,9 +133,14 @@ export const ConfiguracionSemanas: React.FC = () => {
                         />
                     </div>
 
+
                     <button
                         onClick={handleGenerarSemanas}
-                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2"
+                        disabled={semanas.length > 0}
+                        className={`px-4 py-2.5 rounded-lg font-semibold transition-colors shadow-md flex items-center justify-center gap-2 ${semanas.length > 0
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
                     >
                         <Wand2 className="w-4 h-4" />
                         Generar Semanas
@@ -147,8 +150,10 @@ export const ConfiguracionSemanas: React.FC = () => {
                 <div className="mt-3 flex items-start gap-2 text-xs text-indigo-700 bg-indigo-100 p-2 rounded-lg">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <p>
-                        Al generar, se crearán semanas consecutivas de lunes a domingo a partir de la fecha de inicio.
-                        Las semanas existentes para el periodo seleccionado serán reemplazadas.
+                        {semanas.length > 0
+                            ? 'Este periodo ya tiene semanas generadas. El calendario solo se puede crear una vez por periodo.'
+                            : 'Al generar, se crearán semanas consecutivas de lunes a domingo a partir de la fecha de inicio. El calendario solo se puede crear una vez por periodo.'
+                        }
                     </p>
                 </div>
             </div>

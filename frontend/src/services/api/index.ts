@@ -19,6 +19,10 @@ export { festivosService } from './festivos.service';
 export type { Festivo, CreateFestivoDto } from './festivos.service';
 export { motivosService } from './motivos.service';
 export type { Motivo, CreateMotivoDto } from './motivos.service';
+export { componentesService } from './componentes.service';
+export type { CreateComponenteDto, UpdateComponenteDto } from './componentes.service';
+export { periodosService } from './periodos.service';
+export type { CreatePeriodoDto, UpdatePeriodoDto, GenerarSemanasDto } from './periodos.service';
 
 // Export API client for direct use if needed
 export { default as apiClient } from './api-client';
