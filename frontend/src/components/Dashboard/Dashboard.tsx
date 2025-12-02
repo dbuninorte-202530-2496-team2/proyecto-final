@@ -9,7 +9,7 @@ import { AulasTab } from './tabs/AulasTab';
 import { PersonalTab } from './tabs/PersonalTab';
 import EstudiantesTab from './tabs/EstudiantesTab';
 import HorariosTab from './tabs/HorariosTab';
-import RegistroClasesTab from './tabs/RegistroClasesTab';
+import AsistenciaEstudianteTab from './tabs/AsistenciaEstudianteTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
 import AsistenciaTutorTab from './tabs/AsistenciaTutorTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
@@ -115,7 +115,7 @@ export default function Dashboard() {
               )}
 
               <TabsContent value="clases">
-                <RegistroClasesTab />
+                <AsistenciaEstudianteTab />
               </TabsContent>
 
               <TabsContent value="mi-horario">

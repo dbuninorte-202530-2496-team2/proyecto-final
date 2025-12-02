@@ -15,6 +15,7 @@ export { rolesService } from './roles.service';
 export type { Rol } from './roles.service';
 export { tipoDocumentoService } from './tipo-documento.service';
 export type { TipoDocumento } from './tipo-documento.service';
+export * from './asistencia-estudiantes.service';
 export { asistenciaTutorService } from './asistencia-tutor.service';
 export type {
     ClaseProgramada,

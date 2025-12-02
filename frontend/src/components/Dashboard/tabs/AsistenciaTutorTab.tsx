@@ -506,7 +506,6 @@ const AsistenciaTutorTab: React.FC = () => {
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Fecha</th>
                                 <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Horario</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Institución</th>
                                 <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Aula</th>
                                 <th className="px-4 py-3 text-center text-xs font-bold text-green-900 uppercase tracking-wider">Estado</th>
                                 <th className="px-4 py-3 text-left text-xs font-bold text-green-900 uppercase tracking-wider">Motivo</th>
@@ -517,13 +516,13 @@ const AsistenciaTutorTab: React.FC = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                                    <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
                                         Cargando clases...
                                     </td>
                                 </tr>
                             ) : clasesFiltradas.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center text-gray-500 italic">
+                                    <td colSpan={7} className="px-4 py-12 text-center text-gray-500 italic">
                                         {searchTerm || filterEstado !== 'TODOS'
                                             ? 'No se encontraron registros con ese criterio de búsqueda'
                                             : `No hay clases programadas para ${tutorSeleccionado?.nombre || 'este tutor'} en este rango de fechas.`}
@@ -534,10 +533,12 @@ const AsistenciaTutorTab: React.FC = () => {
                                     <tr key={`${clase.id_aula}-${clase.id_horario}-${clase.fecha_programada}`} className="hover:bg-green-50 transition-colors">
                                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{clase.fecha_programada.split('T')[0]}</td>
                                         <td className="px-4 py-3 text-sm text-gray-600">{clase.horario_info.replace(/(\d{2}:\d{2}):\d{2}/g, '$1')}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">{clase.institucion_nombre}</td>
                                         <td className="px-4 py-3 text-sm text-gray-600">
                                             <div className="flex items-center gap-2">
-                                                <span>{clase.aula_info} - {clase.sede_nombre}</span>
+                                                <div>
+                                                    <div className="font-medium">{clase.aula_info} - {clase.sede_nombre}</div>
+                                                    <div className="text-xs text-gray-500">{clase.institucion_nombre}</div>
+                                                </div>
                                                 {esFestivo(clase.fecha_programada) && (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
                                                         Festivo
