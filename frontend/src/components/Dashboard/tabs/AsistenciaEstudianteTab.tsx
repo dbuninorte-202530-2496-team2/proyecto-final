@@ -240,6 +240,11 @@ const AsistenciaEstudianteTab: React.FC = () => {
 
       await asistenciaEstudiantesService.registrarAsistenciaMasiva(dto);
       toast.success('Asistencia de estudiantes guardada correctamente');
+
+      // Actualizar el set de clases con asistencia
+      const fecha = claseSeleccionada.fecha_programada.split('T')[0];
+      setClasesConAsistencia(prev => new Set(prev).add(`${claseSeleccionada.id_aula}-${claseSeleccionada.id_horario}-${fecha}`));
+
       setClaseSeleccionada(null);
     } catch (error: any) {
       console.error('Error al guardar asistencia:', error);
@@ -367,17 +372,23 @@ const AsistenciaEstudianteTab: React.FC = () => {
                           <div className="text-xs text-gray-400">{clase.sede_nombre}</div>
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {clase.dicto_clase ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Dictó
-                            </span>
-                          ) : clase.fecha_reposicion ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
-                              <Calendar className="w-3.5 h-3.5" /> Repuesta
-                            </span>
+                          {clase.dicto_clase !== null ? (
+                            clase.dicto_clase ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Dictó
+                              </span>
+                            ) : clase.fecha_reposicion ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
+                                <Calendar className="w-3.5 h-3.5" /> Repuesta
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200">
+                                <XCircle className="w-3.5 h-3.5" /> No Dictó
+                              </span>
+                            )
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200">
-                              <XCircle className="w-3.5 h-3.5" /> No Dictó
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200">
+                              Pendiente
                             </span>
                           )}
                         </td>

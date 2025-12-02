@@ -12,7 +12,6 @@ import HorariosTab from './tabs/HorariosTab';
 import AsistenciaEstudianteTab from './tabs/AsistenciaEstudianteTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
 import AsistenciaTutorTab from './tabs/AsistenciaTutorTab';
-import HorariosTutorTab from './tabs/HorariosTutorTab';
 import TutorAulaTab from './tabs/TutorAulaTab';
 import AulaHorarioTab from './tabs/AulaHorarioTab';
 import ReportesAvanzadosTab from './tabs/ReportesAvanzadosTab';
@@ -36,8 +35,10 @@ export default function Dashboard() {
       { value: 'sesiones', label: 'Sesiones', icon: Calendar },
       { value: 'asistencia-tutor', label: 'Asistencia Tutor', icon: UserCheck },
     ] : []),
-    { value: 'clases', label: esTutor ? 'Mi Asistencia' : 'Asistencia Estudiantes', icon: Users },
-    ...(esTutor ? [{ value: 'mi-horario', label: 'Mi Horario', icon: Clock }] : []),
+    ...(esTutor ? [
+      { value: 'mi-asistencia', label: 'Mi Asistencia', icon: UserCheck },
+    ] : []),
+    { value: 'asistencia-estudiantes', label: 'Asistencia Estudiantes', icon: Users },
     { value: 'notas', label: 'Notas', icon: FileText },
     ...(tienePermisoAdministrativo ? [
       { value: 'configuracion', label: 'Configuración', icon: Settings },
@@ -55,7 +56,7 @@ export default function Dashboard() {
 
         {/* Tabs mejorados */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-2">
-          <Tabs defaultValue={esTutor ? "clases" : "instituciones"}>
+          <Tabs defaultValue={esTutor ? 'mi-asistencia' : 'instituciones'}>
             <TabsList className="flex flex-wrap h-auto gap-2 bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-xl border border-gray-200">
               {tabs.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger
@@ -114,12 +115,12 @@ export default function Dashboard() {
                 </>
               )}
 
-              <TabsContent value="clases">
-                <AsistenciaEstudianteTab />
+              <TabsContent value="mi-asistencia">
+                <AsistenciaTutorTab />
               </TabsContent>
 
-              <TabsContent value="mi-horario">
-                <HorariosTutorTab />
+              <TabsContent value="asistencia-estudiantes">
+                <AsistenciaEstudianteTab />
               </TabsContent>
 
               <TabsContent value="notas">

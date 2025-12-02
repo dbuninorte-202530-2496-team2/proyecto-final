@@ -220,8 +220,8 @@ const AsistenciaTutorTab: React.FC = () => {
     // Stats
     const stats = useMemo(() => {
         const total = clasesProgramadas.length;
-        const dictoClase = clasesProgramadas.filter(c => c.tiene_asistencia && c.dicto_clase).length;
-        const noDictoClase = clasesProgramadas.filter(c => c.tiene_asistencia && !c.dicto_clase).length;
+        const dictoEnHorario = clasesProgramadas.filter(c => c.tiene_asistencia && c.dicto_clase).length;
+        const repuestas = clasesProgramadas.filter(c => c.tiene_asistencia && !c.dicto_clase && c.fecha_reposicion).length;
         const pendientes = clasesProgramadas.filter(c => !c.tiene_asistencia).length;
         // Cumplimiento = dictó clase O la repuso
         const cumplio = clasesProgramadas.filter(c =>
@@ -229,7 +229,7 @@ const AsistenciaTutorTab: React.FC = () => {
         ).length;
         const cumplimiento = total > 0 ? (cumplio / total) * 100 : 0;
 
-        return { total, dictoClase, noDictoClase, pendientes, cumplimiento };
+        return { total, dictoEnHorario, repuestas, pendientes, cumplimiento };
     }, [clasesProgramadas]);
 
     // Handlers
@@ -460,17 +460,19 @@ const AsistenciaTutorTab: React.FC = () => {
                         <div className="text-xs text-blue-700 mt-1">En el rango seleccionado</div>
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-l-4 border-green-500">
-                        <div className="text-green-600 text-sm font-semibold uppercase tracking-wide">Dictadas</div>
-                        <div className="text-3xl font-bold text-green-900 mt-2">{stats.dictoClase}</div>
+                        <div className="text-green-600 text-sm font-semibold uppercase tracking-wide">Dictadas en Horario</div>
+                        <div className="text-3xl font-bold text-green-900 mt-2">{stats.dictoEnHorario}</div>
+                        <div className="text-xs text-green-700 mt-1">Sin reposición</div>
                     </div>
-                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border-l-4 border-amber-500">
-                        <div className="text-amber-600 text-sm font-semibold uppercase tracking-wide">Pendientes</div>
-                        <div className="text-3xl font-bold text-amber-900 mt-2">{stats.pendientes}</div>
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border-l-4 border-indigo-500">
+                        <div className="text-indigo-600 text-sm font-semibold uppercase tracking-wide">Repuestas</div>
+                        <div className="text-3xl font-bold text-indigo-900 mt-2">{stats.repuestas}</div>
+                        <div className="text-xs text-indigo-700 mt-1">Clases recuperadas</div>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border-l-4 border-purple-500">
                         <div className="text-purple-600 text-sm font-semibold uppercase tracking-wide">Cumplimiento</div>
                         <div className="text-3xl font-bold text-purple-900 mt-2">{stats.cumplimiento.toFixed(0)}%</div>
-                        <div className="text-xs text-purple-700 mt-1">Clases dictadas</div>
+                        <div className="text-xs text-purple-700 mt-1">Dictadas + Repuestas</div>
                     </div>
                 </div>
 
