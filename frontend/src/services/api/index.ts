@@ -14,7 +14,11 @@ export type { Horario, CreateHorarioDto, DiaSemana } from './horarios.service';
 export { rolesService } from './roles.service';
 export type { Rol } from './roles.service';
 export { tipoDocumentoService } from './tipo-documento.service';
-export type { TipoDocumento } from './tipo-documento.service';
+export type { TipoDocumento, CreateTipoDocumentoDto } from './tipo-documento.service';
+export { festivosService } from './festivos.service';
+export type { Festivo, CreateFestivoDto } from './festivos.service';
+export { motivosService } from './motivos.service';
+export type { Motivo, CreateMotivoDto } from './motivos.service';
 
 // Export API client for direct use if needed
 export { default as apiClient } from './api-client';

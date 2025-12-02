@@ -16,6 +16,14 @@ import {
   Search,
 } from 'lucide-react';
 
+import {
+  festivosService,
+  motivosService,
+  tipoDocumentoService,
+  type CreateFestivoDto,
+  type CreateTipoDocumentoDto
+} from '../../../services/api';
+
 // Helper para IDs
 const generateId = (items: { id: number }[]): number =>
   items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
@@ -24,32 +32,18 @@ const generateId = (items: { id: number }[]): number =>
 
 export const ConfiguracionCatalogosBasicos: React.FC = () => {
   // estados
-  const [festivos, setFestivos] = useState<Festivo[]>([
-    { id: 1, fecha: '2025-01-01', descripcion: 'Año Nuevo' },
-    { id: 2, fecha: '2025-03-24', descripcion: 'Festivo de marzo' },
-  ]);
+  const [festivos, setFestivos] = useState<Festivo[]>([]);
+  const [motivos, setMotivos] = useState<Motivo[]>([]);
+  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [motivos, setMotivos] = useState<Motivo[]>([
-    { id: 1, descripcion: 'Enfermedad' },
-    { id: 2, descripcion: 'Actividad institucional' },
-    { id: 3, descripcion: 'Transporte / movilidad' },
-  ]);
-
-  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([
-    { id: 1, nombre: 'Cédula de ciudadanía', sigla: 'CC' },
-    { id: 2, nombre: 'Tarjeta de identidad', sigla: 'TI' },
-    { id: 3, nombre: 'Registro civil', sigla: 'RC' },
-  ]);
-
-  const [newFestivo, setNewFestivo] = useState<Festivo>({
-    id: 0,
+  const [newFestivo, setNewFestivo] = useState<CreateFestivoDto>({
     fecha: '',
     descripcion: '',
   });
 
   const [newMotivo, setNewMotivo] = useState('');
-  const [newTipoDoc, setNewTipoDoc] = useState<TipoDocumento>({
-    id: 0,
+  const [newTipoDoc, setNewTipoDoc] = useState<CreateTipoDocumentoDto>({
     nombre: '',
     sigla: '',
   });
@@ -57,6 +51,30 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
   const [searchFestivos, setSearchFestivos] = useState('');
   const [searchMotivos, setSearchMotivos] = useState('');
   const [searchTiposDoc, setSearchTiposDoc] = useState('');
+
+  // Fetch initial data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [festivosData, motivosData, tiposDocData] = await Promise.all([
+        festivosService.getAll(),
+        motivosService.getAll(),
+        tipoDocumentoService.getAll(),
+      ]);
+      setFestivos(festivosData);
+      setMotivos(motivosData);
+      setTiposDoc(tiposDocData);
+    } catch (error) {
+      console.error('Error loading catalogs:', error);
+      alert('Error al cargar los catálogos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   // filtros
   const festivosFiltrados = useMemo(
@@ -97,65 +115,87 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
   );
 
   // handlers festivos
-  const handleAddFestivo = (e: React.FormEvent) => {
+  const handleAddFestivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFestivo.fecha || !newFestivo.descripcion.trim()) return;
 
-    setFestivos((prev) => [
-      ...prev,
-      {
+    try {
+      await festivosService.create({
         ...newFestivo,
-        id: generateId(prev),
         descripcion: newFestivo.descripcion.trim(),
-      },
-    ]);
-    setNewFestivo({ id: 0, fecha: '', descripcion: '' });
+      });
+      setNewFestivo({ fecha: '', descripcion: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating festivo:', error);
+      alert('Error al crear festivo');
+    }
   };
 
-  const handleDeleteFestivo = (id: number) => {
-    setFestivos((prev) => prev.filter((f) => f.id !== id));
+  const handleDeleteFestivo = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este festivo?')) return;
+    try {
+      await festivosService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting festivo:', error);
+      alert('Error al eliminar festivo');
+    }
   };
 
   // handlers motivos
-  const handleAddMotivo = (e: React.FormEvent) => {
+  const handleAddMotivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMotivo.trim()) return;
 
-    setMotivos((prev) => [
-      ...prev,
-      { id: generateId(prev), descripcion: newMotivo.trim() },
-    ]);
-    setNewMotivo('');
+    try {
+      await motivosService.create({ descripcion: newMotivo.trim() });
+      setNewMotivo('');
+      fetchData();
+    } catch (error) {
+      console.error('Error creating motivo:', error);
+      alert('Error al crear motivo');
+    }
   };
 
-  const handleDeleteMotivo = (id: number) => {
-    setMotivos((prev) => prev.filter((m) => m.id !== id));
+  const handleDeleteMotivo = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este motivo?')) return;
+    try {
+      await motivosService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting motivo:', error);
+      alert('Error al eliminar motivo');
+    }
   };
 
   // handlers tipos documento
-  const handleAddTipoDoc = (e: React.FormEvent) => {
+  const handleAddTipoDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTipoDoc.sigla.trim() || !newTipoDoc.nombre.trim()) return;
 
-    setTiposDoc((prev) => [
-      ...prev,
-      {
-        ...newTipoDoc,
-        id: generateId(prev),
+    try {
+      await tipoDocumentoService.create({
         sigla: newTipoDoc.sigla.trim().toUpperCase(),
         nombre: newTipoDoc.nombre.trim(),
-      },
-    ]);
-
-    setNewTipoDoc({
-      id: 0,
-      nombre: '',
-      sigla: '',
-    });
+      });
+      setNewTipoDoc({ nombre: '', sigla: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating tipo documento:', error);
+      alert('Error al crear tipo de documento');
+    }
   };
 
-  const handleDeleteTipoDoc = (id: number) => {
-    setTiposDoc((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTipoDoc = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este tipo de documento?')) return;
+    try {
+      await tipoDocumentoService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting tipo documento:', error);
+      alert('Error al eliminar tipo de documento');
+    }
   };
 
   // render
@@ -171,7 +211,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Festivos
             </div>
             <div className="text-3xl font-bold text-emerald-900 mt-2">
-              {stats.totalFestivos}
+              {loading ? '...' : stats.totalFestivos}
             </div>
             <p className="text-xs text-emerald-700 mt-1">
               Días sin clases en el calendario
@@ -183,7 +223,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Motivos de ausencia
             </div>
             <div className="text-3xl font-bold text-orange-900 mt-2">
-              {stats.totalMotivos}
+              {loading ? '...' : stats.totalMotivos}
             </div>
             <p className="text-xs text-orange-700 mt-1">
               Razones para justificar inasistencias
@@ -195,7 +235,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Tipos de documento
             </div>
             <div className="text-3xl font-bold text-sky-900 mt-2">
-              {stats.totalTiposDoc}
+              {loading ? '...' : stats.totalTiposDoc}
             </div>
             <p className="text-xs text-sky-700 mt-1">
               Catálogo usado al registrar estudiantes
@@ -297,7 +337,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               type="date"
               value={newFestivo.fecha}
               onChange={(e) =>
-                setNewFestivo((prev) => ({ ...prev, fecha: e.target.value }))
+                setNewFestivo((prev: CreateFestivoDto) => ({ ...prev, fecha: e.target.value }))
               }
               className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-all hover:border-emerald-300 text-sm"
             />
@@ -306,7 +346,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               placeholder="Descripción"
               value={newFestivo.descripcion}
               onChange={(e) =>
-                setNewFestivo((prev) => ({
+                setNewFestivo((prev: CreateFestivoDto) => ({
                   ...prev,
                   descripcion: e.target.value,
                 }))
@@ -521,7 +561,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                 placeholder="Sigla (ej: CC)"
                 value={newTipoDoc.sigla}
                 onChange={(e) =>
-                  setNewTipoDoc((prev) => ({
+                  setNewTipoDoc((prev: CreateTipoDocumentoDto) => ({
                     ...prev,
                     sigla: e.target.value,
                   }))
@@ -533,7 +573,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                 placeholder="Nombre completo"
                 value={newTipoDoc.nombre}
                 onChange={(e) =>
-                  setNewTipoDoc((prev) => ({
+                  setNewTipoDoc((prev: CreateTipoDocumentoDto) => ({
                     ...prev,
                     nombre: e.target.value,
                   }))
