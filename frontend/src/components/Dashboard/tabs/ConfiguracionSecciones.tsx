@@ -16,30 +16,45 @@ import {
   Search,
 } from 'lucide-react';
 
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-  items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
+import {
+  festivosService,
+  motivosService,
+  tipoDocumentoService,
+  periodosService,
+  componentesService,
+} from '../../../services/api';
 
 //CATÁLOGOS 
 
 export const ConfiguracionCatalogosBasicos: React.FC = () => {
   // estados
-  const [festivos, setFestivos] = useState<Festivo[]>([
-    { id: 1, fecha: '2025-01-01', descripcion: 'Año Nuevo' },
-    { id: 2, fecha: '2025-03-24', descripcion: 'Festivo de marzo' },
-  ]);
+  const [festivos, setFestivos] = useState<Festivo[]>([]);
+  const [motivos, setMotivos] = useState<Motivo[]>([]);
+  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [motivos, setMotivos] = useState<Motivo[]>([
-    { id: 1, descripcion: 'Enfermedad' },
-    { id: 2, descripcion: 'Actividad institucional' },
-    { id: 3, descripcion: 'Transporte / movilidad' },
-  ]);
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
-  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([
-    { id: 1, nombre: 'Cédula de ciudadanía', sigla: 'CC' },
-    { id: 2, nombre: 'Tarjeta de identidad', sigla: 'TI' },
-    { id: 3, nombre: 'Registro civil', sigla: 'RC' },
-  ]);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [festivosData, motivosData, tiposDocData] = await Promise.all([
+        festivosService.getAll(),
+        motivosService.getAll(),
+        tipoDocumentoService.getAll(),
+      ]);
+      setFestivos(festivosData);
+      setMotivos(motivosData);
+      setTiposDoc(tiposDocData);
+    } catch (error) {
+      console.error('Error loading catalogs:', error);
+      alert('Error al cargar catálogos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [newFestivo, setNewFestivo] = useState<Festivo>({
     id: 0,
@@ -97,65 +112,94 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
   );
 
   // handlers festivos
-  const handleAddFestivo = (e: React.FormEvent) => {
+  const handleAddFestivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFestivo.fecha || !newFestivo.descripcion.trim()) return;
 
-    setFestivos((prev) => [
-      ...prev,
-      {
-        ...newFestivo,
-        id: generateId(prev),
+    try {
+      const created = await festivosService.create({
+        fecha: newFestivo.fecha,
         descripcion: newFestivo.descripcion.trim(),
-      },
-    ]);
-    setNewFestivo({ id: 0, fecha: '', descripcion: '' });
+      });
+      setFestivos((prev) => [...prev, created]);
+      setNewFestivo({ id: 0, fecha: '', descripcion: '' });
+    } catch (error) {
+      console.error('Error creating festivo:', error);
+      alert('Error al crear festivo');
+    }
   };
 
-  const handleDeleteFestivo = (id: number) => {
-    setFestivos((prev) => prev.filter((f) => f.id !== id));
+  const handleDeleteFestivo = async (id: number) => {
+    if (!window.confirm('¿Eliminar festivo?')) return;
+    try {
+      await festivosService.delete(id);
+      setFestivos((prev) => prev.filter((f) => f.id !== id));
+    } catch (error) {
+      console.error('Error deleting festivo:', error);
+      alert('Error al eliminar festivo');
+    }
   };
 
   // handlers motivos
-  const handleAddMotivo = (e: React.FormEvent) => {
+  const handleAddMotivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMotivo.trim()) return;
 
-    setMotivos((prev) => [
-      ...prev,
-      { id: generateId(prev), descripcion: newMotivo.trim() },
-    ]);
-    setNewMotivo('');
+    try {
+      const created = await motivosService.create({
+        descripcion: newMotivo.trim(),
+      });
+      setMotivos((prev) => [...prev, created]);
+      setNewMotivo('');
+    } catch (error) {
+      console.error('Error creating motivo:', error);
+      alert('Error al crear motivo');
+    }
   };
 
-  const handleDeleteMotivo = (id: number) => {
-    setMotivos((prev) => prev.filter((m) => m.id !== id));
+  const handleDeleteMotivo = async (id: number) => {
+    if (!window.confirm('¿Eliminar motivo?')) return;
+    try {
+      await motivosService.delete(id);
+      setMotivos((prev) => prev.filter((m) => m.id !== id));
+    } catch (error) {
+      console.error('Error deleting motivo:', error);
+      alert('Error al eliminar motivo');
+    }
   };
 
   // handlers tipos documento
-  const handleAddTipoDoc = (e: React.FormEvent) => {
+  const handleAddTipoDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTipoDoc.sigla.trim() || !newTipoDoc.nombre.trim()) return;
 
-    setTiposDoc((prev) => [
-      ...prev,
-      {
-        ...newTipoDoc,
-        id: generateId(prev),
+    try {
+      const created = await tipoDocumentoService.create({
         sigla: newTipoDoc.sigla.trim().toUpperCase(),
         nombre: newTipoDoc.nombre.trim(),
-      },
-    ]);
+      });
 
-    setNewTipoDoc({
-      id: 0,
-      nombre: '',
-      sigla: '',
-    });
+      setTiposDoc((prev) => [...prev, created]);
+      setNewTipoDoc({
+        id: 0,
+        nombre: '',
+        sigla: '',
+      });
+    } catch (error) {
+      console.error('Error creating tipo doc:', error);
+      alert('Error al crear tipo de documento');
+    }
   };
 
-  const handleDeleteTipoDoc = (id: number) => {
-    setTiposDoc((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTipoDoc = async (id: number) => {
+    if (!window.confirm('¿Eliminar tipo de documento?')) return;
+    try {
+      await tipoDocumentoService.delete(id); // This also needs to be added to the service
+      setTiposDoc((prev) => prev.filter((t) => t.id !== id));
+    } catch (error) {
+      console.error('Error deleting tipo doc:', error);
+      alert('Error al eliminar tipo de documento');
+    }
   };
 
   // render
@@ -204,7 +248,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="space-y-12">
         {/* FESTIVOS */}
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -251,9 +295,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                     festivosFiltrados.map((f, idx) => (
                       <tr
                         key={f.id}
-                        className={`border-b transition-colors hover:bg-emerald-50 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                        className={`border-b transition-colors hover:bg-emerald-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
                       >
                         <td className="px-4 py-3 text-gray-700 font-medium">
                           {f.fecha}
@@ -325,7 +368,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
         </div>
 
         {/* MOTIVOS + TIPOS DOC */}
-        <div className="space-y-8">
+        <div className="space-y-12">
           {/* Motivos - Subsección */}
           <div className="animate-fadeIn">
             <div className="flex items-center gap-3 mb-4">
@@ -371,9 +414,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                       motivosFiltrados.map((m, idx) => (
                         <tr
                           key={m.id}
-                          className={`border-b transition-colors hover:bg-orange-50 ${
-                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
+                          className={`border-b transition-colors hover:bg-orange-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            }`}
                         >
                           <td className="px-4 py-3 text-gray-700">
                             {m.descripcion}
@@ -476,9 +518,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                       tiposDocFiltrados.map((t, idx) => (
                         <tr
                           key={t.id}
-                          className={`border-b transition-colors hover:bg-sky-50 ${
-                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
+                          className={`border-b transition-colors hover:bg-sky-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            }`}
                         >
                           <td className="px-4 py-3 text-sky-800 font-semibold">
                             {t.sigla}
@@ -815,9 +856,8 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                   periodosFiltrados.map((p, idx) => (
                     <tr
                       key={p.id}
-                      className={`border-b transition-colors hover:bg-indigo-50 ${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      }`}
+                      className={`border-b transition-colors hover:bg-indigo-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
                     >
                       <td className="px-4 py-3 text-gray-900 font-medium">
                         {p.nombre}
@@ -891,11 +931,10 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                 setNewPeriodo((prev) => ({ ...prev, fec_ini: e.target.value }));
                 setErrorFechasPeriodos(false);
               }}
-              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${
-                errorFechasPeriodos
-                  ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
-                  : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
-              }`}
+              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${errorFechasPeriodos
+                ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
+                : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
+                }`}
             />
             <input
               type="date"
@@ -904,20 +943,18 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                 setNewPeriodo((prev) => ({ ...prev, fec_fin: e.target.value }));
                 setErrorFechasPeriodos(false);
               }}
-              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${
-                errorFechasPeriodos
-                  ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
-                  : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
-              }`}
+              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${errorFechasPeriodos
+                ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
+                : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
+                }`}
             />
             <button
               type="submit"
               disabled={errorFechasPeriodos}
-              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition-all whitespace-nowrap ${
-                errorFechasPeriodos
-                  ? 'bg-gray-400 cursor-not-allowed opacity-50'
-                  : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-md transform hover:scale-105 duration-150 shadow-sm'
-              }`}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition-all whitespace-nowrap ${errorFechasPeriodos
+                ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-md transform hover:scale-105 duration-150 shadow-sm'
+                }`}
             >
               <Plus className="w-4 h-4" />
               Agregar
@@ -991,9 +1028,8 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                     return (
                       <tr
                         key={c.id}
-                        className={`border-b transition-colors hover:bg-purple-50 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                        className={`border-b transition-colors hover:bg-purple-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
                       >
                         <td className="px-4 py-3 text-gray-900 font-medium">
                           {c.nombre}
