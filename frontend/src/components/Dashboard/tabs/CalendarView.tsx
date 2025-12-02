@@ -10,6 +10,7 @@ interface CalendarViewProps {
     aulas: Aula[];
     onSlotClick: (dia: string, horario: Horario) => void;
     onAssignmentClick: (assignment: AulaHorarioSemana) => void;
+    weekStartDate: string;
 }
 
 const DIAS = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA'];
@@ -17,22 +18,41 @@ const DIAS_LABEL: Record<string, string> = {
     LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado',
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ horarios, assignments, aulas, onSlotClick, onAssignmentClick }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ horarios, assignments, aulas, onSlotClick, onAssignmentClick, weekStartDate }) => {
     // Group horarios by day for column rendering
     const horariosByDay = DIAS.reduce((acc, dia) => {
         acc[dia] = horarios.filter(h => h.dia_sem === dia).sort((a, b) => a.hora_ini.localeCompare(b.hora_ini));
         return acc;
     }, {} as Record<string, Horario[]>);
 
+    // Helper to get date for a specific day index (0=Monday, etc)
+    const getDateForDay = (dayIndex: number): string => {
+        if (!weekStartDate) return '';
 
+        // Handle ISO string or simple date string (take only YYYY-MM-DD part)
+        const datePart = weekStartDate.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+
+        // Create date using local time constructor
+        const date = new Date(year, month - 1, day);
+
+        if (isNaN(date.getTime())) return ''; // Invalid date
+
+        // Add days
+        date.setDate(date.getDate() + dayIndex);
+
+        // Format: DD/MM
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    };
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {DIAS.map(dia => (
+            {DIAS.map((dia, index) => (
                 <div key={dia} className="flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                     {/* Header del día */}
                     <div className="bg-gray-50 p-3 border-b border-gray-200 text-center">
                         <span className="font-bold text-gray-700 block">{DIAS_LABEL[dia]}</span>
+                        <span className="text-xs text-gray-500 font-medium block mt-1">{getDateForDay(index)}</span>
                     </div>
 
                     {/* Slots de horarios */}

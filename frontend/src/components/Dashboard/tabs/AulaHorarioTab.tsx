@@ -379,6 +379,7 @@ const AulaHorarioTab: React.FC = () => {
                                 aulas={aulas}
                                 onSlotClick={handleSlotClick}
                                 onAssignmentClick={handleAssignmentClick}
+                                weekStartDate={semanasDelPeriodo.find(s => s.id === selectedSemanaId)?.fec_ini || ''}
                             />
                         ) : (
                             <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-gray-500">

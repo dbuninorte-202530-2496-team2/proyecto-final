@@ -171,5 +171,113 @@ export class AsistenciaTutorController {
     );
   }
 
+  @Get('tutores/:id_tutor/clases-programadas')
+  @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener clases programadas de un tutor',
+    description: 'Retorna todas las clases programadas para un tutor en un rango de fechas, indicando si tienen asistencia registrada o están pendientes. Permite visualizar el cumplimiento del tutor.'
+  })
+  @ApiParam({
+    name: 'id_tutor',
+    description: 'ID del tutor',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'fecha_inicio',
+    description: 'Fecha de inicio del rango (formato: YYYY-MM-DD)',
+    required: true,
+    example: '2024-01-01',
+  })
+  @ApiQuery({
+    name: 'fecha_fin',
+    description: 'Fecha de fin del rango (formato: YYYY-MM-DD)',
+    required: true,
+    example: '2024-12-31',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Clases programadas obtenidas exitosamente con estado de asistencia',
+    schema: {
+      example: [
+        {
+          fecha_programada: '2024-11-25',
+          id_aula: 1,
+          aula_info: '5°1',
+          sede_nombre: 'Sede Principal',
+          id_horario: 3,
+          horario_info: 'LU 08:00-10:00',
+          id_semana: 10,
+          tiene_asistencia: true,
+          id_asistencia: 15,
+          dicto_clase: true,
+          id_motivo: null,
+          descripcion_motivo: null,
+          fecha_reposicion: null
+        },
+        {
+          fecha_programada: '2024-11-27',
+          id_aula: 1,
+          aula_info: '5°1',
+          sede_nombre: 'Sede Principal',
+          id_horario: 2,
+          horario_info: 'MI 10:00-12:00',
+          id_semana: 10,
+          tiene_asistencia: false,
+          id_asistencia: null,
+          dicto_clase: null,
+          id_motivo: null,
+          descripcion_motivo: null,
+          fecha_reposicion: null
+        }
+      ]
+    }
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
+  @ApiResponse({ status: 404, description: 'Tutor no encontrado' })
+  findClasesProgramadas(
+    @Param('id_tutor', ParseIntPipe) id_tutor: number,
+    @Query('fecha_inicio') fecha_inicio: string,
+    @Query('fecha_fin') fecha_fin: string,
+  ) {
+    return this.asistenciaTutorService.findClasesProgramadas(
+      id_tutor,
+      fecha_inicio,
+      fecha_fin
+    );
+  }
+
+  @Get('tutores/:id_tutor/earliest-week')
+  @Auth(ValidRoles.TUTOR, ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener fecha más temprana de semana para un tutor',
+    description: 'Retorna la fecha de inicio de la semana más temprana en la que el tutor tiene clases programadas. Útil para inicializar el rango de fechas.'
+  })
+  @ApiParam({
+    name: 'id_tutor',
+    description: 'ID del tutor',
+    example: 5,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Fecha más temprana obtenida exitosamente',
+    schema: {
+      example: {
+        earliest_date: '2024-01-08'
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
+  @ApiResponse({ status: 404, description: 'Tutor no encontrado' })
+  async getEarliestWeekDate(
+    @Param('id_tutor', ParseIntPipe) id_tutor: number,
+  ) {
+    const earliest_date = await this.asistenciaTutorService.getEarliestWeekDate(id_tutor);
+    return { earliest_date };
+  }
+
 
 }

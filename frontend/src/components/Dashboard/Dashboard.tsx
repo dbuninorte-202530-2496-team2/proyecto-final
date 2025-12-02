@@ -11,8 +11,7 @@ import EstudiantesTab from './tabs/EstudiantesTab';
 import HorariosTab from './tabs/HorariosTab';
 import RegistroClasesTab from './tabs/RegistroClasesTab';
 import ConfiguracionTab from './tabs/ConfiguracionTab';
-import ReposicionesTab from './tabs/ReposicionesTab';
-import SupervisionTab from './tabs/SupervisionTab';
+import AsistenciaTutorTab from './tabs/AsistenciaTutorTab';
 import HorariosTutorTab from './tabs/HorariosTutorTab';
 import TutorAulaTab from './tabs/TutorAulaTab';
 import AulaHorarioTab from './tabs/AulaHorarioTab';
@@ -35,8 +34,7 @@ export default function Dashboard() {
       { value: 'horarios', label: 'Horarios', icon: Clock },
       { value: 'tutores', label: 'Tutores', icon: Users },
       { value: 'sesiones', label: 'Sesiones', icon: Calendar },
-      { value: 'supervision', label: 'Supervisión', icon: UserCheck },
-      { value: 'reposiciones', label: 'Asistencia Tutor', icon: UserCheck },
+      { value: 'asistencia-tutor', label: 'Asistencia Tutor', icon: UserCheck },
     ] : []),
     { value: 'clases', label: esTutor ? 'Mi Asistencia' : 'Asistencia Estudiantes', icon: Users },
     ...(esTutor ? [{ value: 'mi-horario', label: 'Mi Horario', icon: Clock }] : []),
@@ -99,11 +97,8 @@ export default function Dashboard() {
                   <TabsContent value="sesiones">
                     <AulaHorarioTab />
                   </TabsContent>
-                  <TabsContent value="supervision">
-                    <SupervisionTab />
-                  </TabsContent>
-                  <TabsContent value="reposiciones">
-                    <ReposicionesTab />
+                  <TabsContent value="asistencia-tutor">
+                    <AsistenciaTutorTab />
                   </TabsContent>
                   <TabsContent value="configuracion">
                     <ConfiguracionTab />
