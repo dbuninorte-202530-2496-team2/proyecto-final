@@ -667,6 +667,19 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
 
   React.useEffect(() => {
     fetchData();
+
+    // Listen for changes from other components
+    const handleDataChange = () => {
+      fetchData();
+    };
+
+    window.addEventListener('periodos-updated', handleDataChange);
+    window.addEventListener('semanas-updated', handleDataChange);
+
+    return () => {
+      window.removeEventListener('periodos-updated', handleDataChange);
+      window.removeEventListener('semanas-updated', handleDataChange);
+    };
   }, []);
 
   const periodosFiltrados = useMemo(
@@ -717,6 +730,8 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
         numero: 1,
       });
       fetchData();
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('periodos-updated'));
     } catch (error) {
       console.error('Error creating periodo:', error);
     }
@@ -727,6 +742,8 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
     try {
       await periodosService.delete(id);
       fetchData();
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('periodos-updated'));
     } catch (error) {
       console.error('Error deleting periodo:', error);
     }
@@ -871,10 +888,10 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                         <td className="px-4 py-3 text-gray-700">{p.anho}</td>
                         <td className="px-4 py-3 text-gray-700">{p.numero}</td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
-                          {semanas?.primera ? new Date(semanas.primera).toLocaleDateString('es-ES') : '-'}
+                          {semanas?.primera ? semanas.primera.split('T')[0] : '-'}
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
-                          {semanas?.ultima ? new Date(semanas.ultima).toLocaleDateString('es-ES') : '-'}
+                          {semanas?.ultima ? semanas.ultima.split('T')[0] : '-'}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button

@@ -16,6 +16,17 @@ export const ConfiguracionSemanas: React.FC = () => {
 
     useEffect(() => {
         loadPeriodos();
+
+        // Listen for changes from other components
+        const handlePeriodosChange = () => {
+            loadPeriodos();
+        };
+
+        window.addEventListener('periodos-updated', handlePeriodosChange);
+
+        return () => {
+            window.removeEventListener('periodos-updated', handlePeriodosChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -67,6 +78,8 @@ export const ConfiguracionSemanas: React.FC = () => {
 
                 toast.success('Semanas generadas exitosamente');
                 loadSemanas(selectedPeriodoId);
+                // Notify other components
+                window.dispatchEvent(new CustomEvent('semanas-updated'));
             } catch (error) {
                 console.error('Error generating semanas', error);
             }
