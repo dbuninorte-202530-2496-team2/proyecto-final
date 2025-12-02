@@ -13,8 +13,8 @@ export class PersonalEntity {
     @ApiProperty({ example: 'Pérez', required: false })
     apellido?: string;
 
-    @ApiProperty({ example: 'juan@example.com', required: false })
-    correo?: string;
+    @ApiProperty({ example: 'juan@example.com' })
+    correo: string;
 
     @ApiProperty({ example: '3001234567', required: false })
     telefono?: string;

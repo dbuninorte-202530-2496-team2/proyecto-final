@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { Pool } from 'pg';
+import * as bcrypt from 'bcrypt';
 import { PG_CONNECTION } from '../database/database.module';
 
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -20,11 +21,16 @@ export class UsuariosService {
         const { usuario, contrasena } = dto;
 
         try {
+            // Hash password before storing
+            const hashedPassword = contrasena
+                ? await bcrypt.hash(contrasena, 10)
+                : null;
+
             const result = await this.pool.query(
                 `INSERT INTO usuario (usuario, contrasena)
          VALUES ($1, $2)
          RETURNING usuario, contrasena`,
-                [usuario, contrasena],
+                [usuario, hashedPassword],
             );
             return result.rows[0];
         } catch (error) {
@@ -66,12 +72,17 @@ export class UsuariosService {
         try {
             await this.findOne(usuario);
 
+            // Hash password if provided
+            const hashedPassword = contrasena
+                ? await bcrypt.hash(contrasena, 10)
+                : null;
+
             const result = await this.pool.query(
                 `UPDATE usuario
          SET contrasena = COALESCE($1, contrasena)
          WHERE usuario = $2
          RETURNING usuario, contrasena`,
-                [contrasena, usuario],
+                [hashedPassword, usuario],
             );
 
             return result.rows[0];

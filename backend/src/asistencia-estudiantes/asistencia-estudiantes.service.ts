@@ -1,4 +1,10 @@
-import { Inject, Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_CONNECTION } from '../database/database.module';
 import { CreateAsistenciaEstDto } from './dto/create-asistencia-est.dto';
@@ -9,7 +15,7 @@ export class AsistenciaEstudiantesService {
   constructor(
     @Inject(PG_CONNECTION)
     private readonly pool: Pool,
-  ) {}
+  ) { }
 
   async registrarAsistenciaIndividual(dto: CreateAsistenciaEstDto) {
     try {
@@ -33,7 +39,28 @@ export class AsistenciaEstudiantesService {
         data: dto,
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      // Los errores del stored procedure vienen como PostgreSQL errors
+      if (error.code === 'P0001') { // RAISE EXCEPTION en plpgsql
+        const message = error.message;
+
+        if (message.includes('no existe') ||
+          message.includes('no encontrado') ||
+          message.includes('no está asignado')) {
+          throw new NotFoundException(message);
+        } else if (message.includes('festivo') ||
+          message.includes('no pertenece') ||
+          message.includes('Ya existe')) {
+          throw new BadRequestException(message);
+        }
+      }
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error al registrar asistencia individual: ${error.message}`
+      );
     }
   }
 
@@ -58,7 +85,27 @@ export class AsistenciaEstudiantesService {
         message: 'Asistencia masiva registrada correctamente',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      // Los errores del stored procedure vienen como PostgreSQL errors
+      if (error.code === 'P0001') { // RAISE EXCEPTION en plpgsql
+        const message = error.message;
+
+        if (message.includes('no existe') ||
+          message.includes('no encontrado')) {
+          throw new NotFoundException(message);
+        } else if (message.includes('festivo') ||
+          message.includes('no pertenece') ||
+          message.includes('duplicados')) {
+          throw new BadRequestException(message);
+        }
+      }
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error al registrar asistencia masiva: ${error.message}`
+      );
     }
   }
 
@@ -74,7 +121,9 @@ export class AsistenciaEstudiantesService {
       const { rows } = await this.pool.query(query, [id_estudiante]);
       return rows;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new InternalServerErrorException(
+        `Error al obtener asistencias del estudiante: ${error.message}`
+      );
     }
   }
 
@@ -90,7 +139,9 @@ export class AsistenciaEstudiantesService {
       const { rows } = await this.pool.query(query, [id_aula]);
       return rows;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new InternalServerErrorException(
+        `Error al obtener asistencias del aula: ${error.message}`
+      );
     }
   }
 }

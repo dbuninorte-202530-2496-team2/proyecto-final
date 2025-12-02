@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsDateString, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateEstudianteDto {
   @ApiProperty({ example: 'E2025301' })
@@ -16,21 +17,18 @@ export class CreateEstudianteDto {
 
   @ApiProperty({ example: 1, description: 'FK tipo documento' })
   @IsNumber() @IsNotEmpty()
+  @Type(() => Number)
   tipo_doc: number;
 
-  @ApiProperty({ example: '10203045', required: false })
-  @IsString() @IsOptional()
-  numero_documento?: string;
+  @ApiProperty({ example: 85, description: 'Score IN (0-100)', required: false })
+  @IsNumber() @IsOptional()
+  @Min(0) @Max(100)
+  @Type(() => Number)
+  score_in?: number;
 
-  @ApiProperty({ example: '2012-05-14', required: false })
-  @IsDateString() @IsOptional()
-  fecha_nacimiento?: string;
-
-  @ApiProperty({ example: 4, enum: [4,5,9,10], required: false })
-  @IsNumber() @IsOptional() @IsIn([4,5,9,10])
-  grado?: number;
-
-  @ApiProperty({ example: 'ACTIVO', required: false })
-  @IsString() @IsOptional()
-  estado?: string;
+  @ApiProperty({ example: 90, description: 'Score OUT (0-100)', required: false })
+  @IsNumber() @IsOptional()
+  @Min(0) @Max(100)
+  @Type(() => Number)
+  score_out?: number;
 }

@@ -41,14 +41,6 @@ export class CreateAsistenciaTutDto {
   id_horario: number;
 
   @ApiProperty({
-    description: 'ID de la semana',
-    example: 10,
-  })
-  @IsInt({ message: 'El ID de la semana debe ser un número entero' })
-  @IsPositive({ message: 'El ID de la semana debe ser positivo' })
-  id_semana: number;
-
-  @ApiProperty({
     description: 'ID del motivo de inasistencia (requerido si dictoClase = false)',
     example: 2,
     required: false,
@@ -58,4 +50,13 @@ export class CreateAsistenciaTutDto {
   @IsPositive({ message: 'El ID del motivo debe ser positivo' })
   @IsOptional()
   id_motivo?: number;
+
+  @ApiProperty({
+    description: 'Fecha de reposición de la clase (formato: YYYY-MM-DD). Sin validaciones, se asume que la reposición ya ocurrió.',
+    example: '2024-02-20',
+    required: false,
+  })
+  @IsDateString({}, { message: 'La fecha de reposición debe tener formato YYYY-MM-DD' })
+  @IsOptional()
+  fecha_reposicion?: string;
 }

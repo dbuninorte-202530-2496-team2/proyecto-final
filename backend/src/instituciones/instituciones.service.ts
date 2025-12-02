@@ -11,7 +11,7 @@ import { CreateInstitucionDto, UpdateInstitucionDto } from './dto';
 
 @Injectable()
 export class InstitucionesService {
-  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) {}
+  constructor(@Inject(PG_CONNECTION) private readonly pool: Pool) { }
 
   async create(createInstitucionDto: CreateInstitucionDto) {
     const { nombre, correo, jornada, nombre_contacto, telefono_contacto } = createInstitucionDto;
@@ -21,7 +21,7 @@ export class InstitucionesService {
         `INSERT INTO institucion (nombre, correo, jornada, nombre_contacto, telefono_contacto) 
          VALUES ($1, $2, $3, $4, $5) 
          RETURNING id, nombre, correo, jornada, nombre_contacto, telefono_contacto`,
-        [nombre, correo || null, jornada, nombre_contacto || null, telefono_contacto || null],
+        [nombre, correo, jornada, nombre_contacto || null, telefono_contacto || null],
       );
 
       return result.rows[0];
@@ -59,7 +59,6 @@ export class InstitucionesService {
 
       return result.rows[0];
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
@@ -68,7 +67,25 @@ export class InstitucionesService {
     const { nombre, correo, jornada, nombre_contacto, telefono_contacto } = updateInstitucionDto;
 
     try {
-      await this.findOne(id);
+      const currentInstitucion = await this.findOne(id);
+
+      // Si se intenta cambiar la jornada, verificar si hay horarios asociados
+      if (jornada && jornada !== currentInstitucion.jornada) {
+        const horariosExistentes = await this.pool.query(
+          `SELECT COUNT(*) as count
+           FROM aula_horario_semana ahs
+           INNER JOIN aula a ON ahs.id_aula = a.id
+           INNER JOIN sede s ON a.id_sede = s.id
+           WHERE s.id_inst = $1`,
+          [id]
+        );
+
+        if (parseInt(horariosExistentes.rows[0].count) > 0) {
+          throw new BadRequestException(
+            'No se puede cambiar la jornada porque existen horarios de clases asignados.'
+          );
+        }
+      }
 
       const result = await this.pool.query(
         `UPDATE institucion 
@@ -84,7 +101,6 @@ export class InstitucionesService {
 
       return result.rows[0];
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
@@ -96,13 +112,13 @@ export class InstitucionesService {
 
       return { message: `Institución con id ${id} eliminada correctamente` };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       this.handleDBExceptions(error);
     }
   }
 
   private handleDBExceptions(error: any): never {
-    console.error(error);
+    if (error instanceof BadRequestException) throw error;
+    if (error instanceof NotFoundException) throw error;
 
     if (error.code === '23505') {
       throw new BadRequestException('Ya existe una institución con ese nombre');
@@ -114,6 +130,7 @@ export class InstitucionesService {
       );
     }
 
+    console.error(error);
     throw new InternalServerErrorException(
       'Error inesperado, revisa los logs del servidor',
     );

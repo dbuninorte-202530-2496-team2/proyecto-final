@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS rol(
 	descripcion text
 );
 CREATE UNIQUE INDEX uq_rol_nombre_clean
-ON rol (LOWER(TRIM(nombre)));
+ON rol (nombre);
 
 CREATE TABLE IF NOT EXISTS usuario(
 	usuario text PRIMARY KEY,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS personal(
 	codigo varchar(20) UNIQUE NOT NULL,
 	nombre text NOT NULL,
 	apellido text,
-	correo text,
+	correo text NOT NULL,
 	telefono varchar(20),
 	id_rol int,
 	usuario text UNIQUE,
@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS institucion(
 	correo text,
 	jornada text NOT NULL,
 	nombre_contacto text,
-	telefono_contacto varchar(20)
+	telefono_contacto varchar(20),
+
+	UNIQUE (nombre)
 );
 
 CREATE TABLE IF NOT EXISTS sede(
@@ -47,7 +49,9 @@ CREATE TABLE IF NOT EXISTS sede(
 	direccion text,
 	id_inst int NOT NULL,
 	is_principal boolean NOT NULL,
-	FOREIGN KEY (id_inst) REFERENCES institucion(id)
+	FOREIGN KEY (id_inst) REFERENCES institucion(id),
+
+	UNIQUE (id_inst, nombre)
 );
 
 CREATE TABLE IF NOT EXISTS aula(
@@ -63,7 +67,9 @@ CREATE TABLE IF NOT EXISTS aula(
     ) STORED,
 	id_sede int NOT NULL,
 	FOREIGN KEY (id_sede) REFERENCES sede(id),
-	CHECK (grado IN (4, 5, 9, 10))
+	CHECK (grado IN (4, 5, 9, 10)),
+
+	UNIQUE (id_sede, grado, grupo)
 );
 
 CREATE TABLE IF NOT EXISTS horario(
@@ -71,6 +77,7 @@ CREATE TABLE IF NOT EXISTS horario(
 	dia_sem char(2) NOT NULL,
 	hora_ini time NOT NULL,
 	hora_fin time NOT NULL,
+
 	CHECK (dia_sem IN ('LU', 'MA', 'MI', 'JU', 'VI', 'SA')),
 	-- Cada horario es una hora equivalente
 	CHECK (
@@ -80,9 +87,8 @@ CREATE TABLE IF NOT EXISTS horario(
         INTERVAL '50 minutes',
         INTERVAL '55 minutes',
         INTERVAL '60 minutes'
-    )
-)
-
+    )),
+	UNIQUE (dia_sem, hora_ini, hora_fin)
 );
 
 CREATE TABLE IF NOT EXISTS periodo(
@@ -109,10 +115,7 @@ CREATE TABLE IF NOT EXISTS semana(
  
 
 -- aula_horario_sem equivale al ejemplar específico de una clase.
--- Se busca flexibilidad para horarios irregulares en un periodo,
--- además de la posibilidad de almacenar clases de reposición
--- como filas. Así se separa la no asistencia a la clase original 
--- de la asistencia a la reposición.
+-- Se busca flexibilidad para horarios irregulares en un periodo.
 CREATE TABLE IF NOT EXISTS aula_horario_sem(
 	id_aula int,
 	id_horario int,
@@ -163,11 +166,63 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_set_fecha_programada on aula_horario_sem;
 CREATE TRIGGER trg_set_fecha_programada
 BEFORE INSERT OR UPDATE ON aula_horario_sem
 FOR EACH ROW
 EXECUTE FUNCTION set_fecha_programada();
 
+-- Este trigger previene que se solapen las clases en un mismo aula.
+CREATE OR REPLACE FUNCTION check_solape_clase()
+RETURNS trigger AS $$
+DECLARE
+    conflicto record;
+    h_nuevo record;
+BEGIN
+    -- Obtener el horario nuevo una sola vez
+    SELECT dia_sem, hora_ini, hora_fin 
+    INTO h_nuevo
+    FROM horario 
+    WHERE id = NEW.id_horario;
+    
+    -- Buscar conflictos
+    SELECT 
+        ahs.id_horario,
+        h_existente.hora_ini,
+        h_existente.hora_fin,
+        h_existente.dia_sem
+    INTO conflicto
+    FROM aula_horario_sem ahs
+    JOIN horario h_existente ON h_existente.id = ahs.id_horario
+    WHERE ahs.id_aula = NEW.id_aula
+      AND ahs.id_semana = NEW.id_semana
+      AND h_existente.dia_sem = h_nuevo.dia_sem
+      -- Excluir el registro actual en caso de UPDATE
+      AND NOT (TG_OP = 'UPDATE' 
+           AND ahs.id_aula = OLD.id_aula 
+           AND ahs.id_horario = OLD.id_horario 
+           AND ahs.id_semana = OLD.id_semana)
+      -- Verificar solapamiento
+      AND (h_existente.hora_ini, h_existente.hora_fin) OVERLAPS (h_nuevo.hora_ini, h_nuevo.hora_fin)
+    LIMIT 1;
+
+    IF FOUND THEN
+        RAISE EXCEPTION 
+        'Conflicto: El aula % ya tiene clase el % de % - % que se solapa con el nuevo horario % - %',
+        NEW.id_aula, h_nuevo.dia_sem,
+        conflicto.hora_ini, conflicto.hora_fin,
+        h_nuevo.hora_ini, h_nuevo.hora_fin;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+drop trigger if exists trg_no_solape_clase on aula_horario_sem;
+CREATE TRIGGER trg_no_solape_clase
+BEFORE INSERT OR UPDATE ON aula_horario_sem
+FOR EACH ROW
+EXECUTE FUNCTION check_solape_clase();
 
 
 
@@ -271,6 +326,72 @@ CREATE TABLE IF NOT EXISTS nota(
 	FOREIGN KEY (id_tutor) REFERENCES personal(id),
 	FOREIGN KEY (id_comp) REFERENCES componente(id),
 	FOREIGN KEY (id_estudiante) REFERENCES estudiante(id),
-	CHECK (valor >= 0 AND valor <= 5),
+	CHECK (valor >= 0 AND valor <= 100),
 	UNIQUE (id_estudiante, id_comp)
 );
+
+--
+--
+--
+-- TABLAS INMUTABLES
+-- Se aplican a tablas que representan conceptos inmutables
+--
+--
+--
+
+CREATE OR REPLACE FUNCTION block_updates()
+RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'La tabla % no permite modificaciones. Use DELETE + INSERT si necesita corregir datos.',
+        TG_TABLE_NAME
+        USING HINT = 'Los registros en esta tabla representan conceptos inmutables';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Aplicar a horario
+drop trigger if exists trg_horario_immutable on horario;
+CREATE TRIGGER trg_horario_immutable
+BEFORE UPDATE ON horario
+FOR EACH ROW
+EXECUTE FUNCTION block_updates();
+
+-- Aplicar a semana
+drop trigger if exists trg_semana_immutable on semana;
+CREATE TRIGGER trg_semana_immutable
+BEFORE UPDATE ON semana
+FOR EACH ROW
+EXECUTE FUNCTION block_updates();
+
+
+
+
+-- Trigger para validar que la suma de porcentajes de componentes no exceda 100%
+CREATE OR REPLACE FUNCTION check_porcentaje_componentes()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_total NUMERIC;
+BEGIN
+    -- Sumar porcentajes existentes para el mismo periodo y tipo de programa
+    -- Excluyendo el registro actual (importante para UPDATE)
+    SELECT COALESCE(SUM(porcentaje), 0)
+    INTO v_total
+    FROM componente
+    WHERE id_periodo = NEW.id_periodo
+      AND tipo_programa = NEW.tipo_programa
+      AND id IS DISTINCT FROM NEW.id; -- IS DISTINCT FROM maneja NULLs en ID si fuera el caso (aunque es PK)
+
+    IF (v_total + NEW.porcentaje) > 100 THEN
+        RAISE EXCEPTION 'La suma de porcentajes excede el 100%%. Acumulado: %, Intentado: %', 
+            v_total, NEW.porcentaje
+            USING ERRCODE = 'P0001'; -- Código de error genérico o personalizado
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_porcentaje_componentes ON componente;
+CREATE TRIGGER trg_check_porcentaje_componentes
+BEFORE INSERT OR UPDATE ON componente
+FOR EACH ROW
+EXECUTE FUNCTION check_porcentaje_componentes();

@@ -12,4 +12,10 @@ export class PeriodoEntity {
     example: 2024,
   })
   anho: number;
+
+  @ApiProperty({
+    description: 'Número del periodo en el año (1 para primer semestre, 2 para segundo)',
+    example: 1,
+  })
+  numero: number;
 }

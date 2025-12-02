@@ -17,28 +17,25 @@ export class InstitucionEntity {
   @ApiProperty({
     description: 'Correo electrónico',
     example: 'contacto@colegiosanfrancisco.edu.co',
-    nullable: true,
   })
-  correo: string | null;
+  correo: string;
 
   @ApiProperty({
     description: 'Jornada de la institución',
     enum: Jornada,
-    example: 'MIXTA',
+    example: 'MANANA_Y_TARDE',
   })
   jornada: Jornada;
 
   @ApiProperty({
     description: 'Nombre del contacto',
     example: 'María González',
-    nullable: true,
   })
-  nombre_contacto: string | null;
+  nombre_contacto: string;
 
   @ApiProperty({
     description: 'Teléfono de contacto',
     example: '+57 300 123 4567',
-    nullable: true,
   })
-  telefono_contacto: string | null;
+  telefono_contacto: string;
 }

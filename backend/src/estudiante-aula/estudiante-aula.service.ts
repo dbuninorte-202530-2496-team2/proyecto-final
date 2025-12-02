@@ -1,4 +1,10 @@
-import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_CONNECTION } from '../database/database.module';
 import { AsignarEstudianteAulaDto } from './dto/asignar-estudiante-aula.dto';
@@ -9,7 +15,7 @@ export class EstudianteAulaService {
   constructor(
     @Inject(PG_CONNECTION)
     private readonly pool: Pool,
-  ) {}
+  ) { }
 
   async asignarEstudiante(id_estudiante: number, dto: AsignarEstudianteAulaDto) {
     try {
@@ -30,7 +36,27 @@ export class EstudianteAulaService {
         message: 'Estudiante asignado correctamente al aula',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      // Los errores del stored procedure vienen como PostgreSQL errors
+      if (error.code === 'P0001') { // RAISE EXCEPTION en plpgsql
+        const message = error.message;
+
+        if (message.includes('no existe') ||
+          message.includes('no encontrado')) {
+          throw new NotFoundException(message);
+        } else if (message.includes('ya está asignado') ||
+          message.includes('debe') ||
+          message.includes('no puede')) {
+          throw new BadRequestException(message);
+        }
+      }
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error al asignar el estudiante: ${error.message}`
+      );
     }
   }
 
@@ -53,7 +79,28 @@ export class EstudianteAulaService {
         message: 'Estudiante movido correctamente al aula destino',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      // Los errores del stored procedure vienen como PostgreSQL errors
+      if (error.code === 'P0001') { // RAISE EXCEPTION en plpgsql
+        const message = error.message;
+
+        if (message.includes('no existe') ||
+          message.includes('no encontrado') ||
+          message.includes('No tiene una asignación activa')) {
+          throw new NotFoundException(message);
+        } else if (message.includes('no puede') ||
+          message.includes('debe') ||
+          message.includes('anterior')) {
+          throw new BadRequestException(message);
+        }
+      }
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error al mover el estudiante: ${error.message}`
+      );
     }
   }
 
@@ -69,7 +116,9 @@ export class EstudianteAulaService {
       const { rows } = await this.pool.query(query, [id_estudiante]);
       return rows;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new InternalServerErrorException(
+        `Error al obtener el histórico: ${error.message}`
+      );
     }
   }
 }

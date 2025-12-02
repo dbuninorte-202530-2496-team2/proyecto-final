@@ -9,28 +9,29 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { 
-  ApiOperation, 
-  ApiTags, 
+import {
+  ApiOperation,
+  ApiTags,
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
 import { AulaHorarioSemanaService } from './aula-horario-semana.service';
-import { AsignarHorarioAulaDto, CrearSesionEspecificaDto } from './dto';
+import { AsignarHorarioAulaDto, CrearSesionEspecificaDto, AsignarHorarioBulkDto } from './dto';
 import { AulaHorarioSemanaEntity } from './entities/aula-horario-semana.entity';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 
+@Auth()
 @ApiTags('Aula-Horario-Semana')
 @Controller()
 export class AulaHorarioSemanaController {
   constructor(
     private readonly aulaHorarioSemanaService: AulaHorarioSemanaService
-  ) {}
+  ) { }
 
   @Get('aulas/:id_aula/horarios')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener todos los horarios de un aula',
     description: 'Retorna una lista de todos los horarios asignados a un aula específica con información de las semanas.'
   })
@@ -39,8 +40,8 @@ export class AulaHorarioSemanaController {
     description: 'ID del aula',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Lista de horarios obtenida exitosamente',
     type: [AulaHorarioSemanaEntity],
   })
@@ -49,10 +50,31 @@ export class AulaHorarioSemanaController {
     return this.aulaHorarioSemanaService.findHorariosByAula(id_aula);
   }
 
+  @Get('semanas/:id_semana/aulas-horarios')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener todas las asignaciones de una semana',
+    description: 'Retorna una lista de todas las asignaciones de horarios a aulas para una semana específica (útil para vista de calendario).'
+  })
+  @ApiParam({
+    name: 'id_semana',
+    description: 'ID de la semana',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de asignaciones obtenida exitosamente',
+    type: [AulaHorarioSemanaEntity],
+  })
+  @ApiResponse({ status: 404, description: 'Semana no encontrada' })
+  findAsignacionesBySemana(@Param('id_semana', ParseIntPipe) id_semana: number) {
+    return this.aulaHorarioSemanaService.findAsignacionesBySemana(id_semana);
+  }
+
   @Post('aulas/:id_aula/horarios')
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Asignar un horario a un aula',
     description: 'Asigna un horario específico a un aula desde una semana determinada. Solo accesible por ADMINISTRATIVO y ADMINISTRADOR.'
   })
@@ -61,19 +83,19 @@ export class AulaHorarioSemanaController {
     description: 'ID del aula',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Horario asignado exitosamente',
     type: AulaHorarioSemanaEntity,
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'Ya existe esta asignación',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
   @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Aula, horario o semana no encontrada',
   })
   asignarHorario(
@@ -83,10 +105,51 @@ export class AulaHorarioSemanaController {
     return this.aulaHorarioSemanaService.asignarHorario(id_aula, asignarHorarioDto);
   }
 
+  @Post('aulas/:id_aula/horarios/bulk')
+  @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Asignar horario a todas las semanas de un periodo',
+    description: 'Asigna un horario a un aula para todas las semanas de un periodo específico (asignación masiva). Solo accesible por ADMINISTRATIVO y ADMINISTRADOR.'
+  })
+  @ApiParam({
+    name: 'id_aula',
+    description: 'ID del aula',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Asignación masiva exitosa',
+    schema: {
+      example: {
+        message: 'Horario asignado a 16 semanas exitosamente',
+        asignaciones_creadas: 16,
+        id_horario: 5,
+        id_periodo: 1
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Error en la asignación masiva',
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
+  @ApiResponse({
+    status: 404,
+    description: 'Aula, horario o periodo no encontrado',
+  })
+  asignarHorarioBulk(
+    @Param('id_aula', ParseIntPipe) id_aula: number,
+    @Body() asignarHorarioBulkDto: AsignarHorarioBulkDto,
+  ) {
+    return this.aulaHorarioSemanaService.asignarHorarioBulk(id_aula, asignarHorarioBulkDto);
+  }
+
   @Post('aulas/:id_aula/horarios/sesion-especifica')
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Crear sesión específica (reposición)',
     description: 'Crea una sesión de clase en una fecha específica (ej: para reposiciones). El sistema calcula automáticamente la semana correspondiente. Solo accesible por ADMINISTRATIVO y ADMINISTRADOR.'
   })
@@ -95,8 +158,8 @@ export class AulaHorarioSemanaController {
     description: 'ID del aula',
     example: 1,
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Sesión creada exitosamente',
     schema: {
       example: {
@@ -109,14 +172,14 @@ export class AulaHorarioSemanaController {
       }
     }
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'No existe una semana que contenga la fecha o ya existe la sesión',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
   @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Aula u horario no encontrado',
   })
   crearSesionEspecifica(
@@ -129,7 +192,7 @@ export class AulaHorarioSemanaController {
   @Delete('aulas/:id_aula/horarios/:id_horario/:id_semana')
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Eliminar asignación de horario',
     description: 'Elimina la asignación de un horario específico a un aula en una semana. No se puede eliminar si tiene asistencias registradas. Solo accesible por ADMINISTRATIVO y ADMINISTRADOR.'
   })
@@ -148,18 +211,18 @@ export class AulaHorarioSemanaController {
     description: 'ID de la semana',
     example: 10,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Asignación eliminada exitosamente',
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'No se puede eliminar porque tiene asistencias registradas',
   })
   @ApiResponse({ status: 401, description: 'No autenticado' })
   @ApiResponse({ status: 403, description: 'Sin permisos suficientes' })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Asignación no encontrada',
   })
   eliminarAsignacion(
@@ -168,8 +231,8 @@ export class AulaHorarioSemanaController {
     @Param('id_semana', ParseIntPipe) id_semana: number,
   ) {
     return this.aulaHorarioSemanaService.eliminarAsignacion(
-      id_aula, 
-      id_horario, 
+      id_aula,
+      id_horario,
       id_semana
     );
   }

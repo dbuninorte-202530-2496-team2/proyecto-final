@@ -165,6 +165,28 @@ export class PeriodosService {
     }
   }
 
+  async removeSemanasByPeriodo(id_periodo: number): Promise<{ message: string }> {
+    await this.findOne(id_periodo);
+
+    try {
+      const result = await this.pool.query(
+        'DELETE FROM semana WHERE id_periodo = $1',
+        [id_periodo]
+      );
+
+      return { message: `Se eliminaron ${result.rowCount} semanas del periodo` };
+    } catch (error) {
+      if (error.code === '23503') {
+        throw new BadRequestException(
+          'No se pueden eliminar las semanas porque tienen registros asociados'
+        );
+      }
+      throw new InternalServerErrorException(
+        `Error al eliminar las semanas: ${error.message}`
+      );
+    }
+  }
+
   async generarSemanas(
     id_periodo: number,
     generarSemanasDto: GenerarSemanasDto
@@ -208,7 +230,7 @@ export class PeriodosService {
     try {
       const query = 'SELECT * FROM fn_info_calendario_periodo($1)';
       const result = await this.pool.query(query, [id_periodo]);
-      
+
       if (!result.rows[0] || result.rows[0].total_semanas === 0) {
         throw new NotFoundException(
           `El periodo ${id_periodo} no tiene semanas generadas aún`

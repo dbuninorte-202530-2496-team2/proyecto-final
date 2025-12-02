@@ -25,7 +25,7 @@ import { ValidRoles } from '../auth/interfaces';
 @ApiTags('Aulas')
 @Controller()
 export class AulasController {
-  constructor(private readonly aulasService: AulasService) {}
+  constructor(private readonly aulasService: AulasService) { }
 
   @Post('aulas')
   @Auth(ValidRoles.ADMINISTRATIVO, ValidRoles.ADMINISTRADOR)
@@ -54,7 +54,7 @@ export class AulasController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener todas las aulas',
-    description: 'Retorna todas las aulas con información de sede e institución. Endpoint público.',
+    description: 'Retorna todas las aulas con información de sede e institución. Accessible por todos los roles.',
   })
   @ApiResponse({
     status: 200,
@@ -69,7 +69,7 @@ export class AulasController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener un aula por ID',
-    description: 'Retorna información detallada de un aula. Endpoint público.',
+    description: 'Retorna información detallada de un aula. Accessible por todos los roles.',
   })
   @ApiParam({
     name: 'id',
@@ -93,7 +93,7 @@ export class AulasController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener aulas de una sede',
-    description: 'Retorna todas las aulas de una sede específica. Endpoint público.',
+    description: 'Retorna todas las aulas de una sede específica. Accessible por todos los roles.',
   })
   @ApiParam({
     name: 'id_sede',
@@ -117,7 +117,7 @@ export class AulasController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener estudiantes de un aula',
-    description: 'Retorna todos los estudiantes matriculados en un aula. Endpoint público.',
+    description: 'Retorna todos los estudiantes matriculados en un aula. Accessible por todos los roles.',
   })
   @ApiParam({
     name: 'id',
@@ -140,7 +140,7 @@ export class AulasController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener histórico de tutores de un aula',
-    description: 'Retorna todos los tutores que han sido asignados al aula. Endpoint público.',
+    description: 'Retorna todos los tutores que han sido asignados al aula. Accessible por todos los roles.',
   })
   @ApiParam({
     name: 'id',

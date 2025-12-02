@@ -4,6 +4,11 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { SeedModule } from './seed/seed.module';
 import { RolesModule } from './roles/roles.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { PersonalModule } from './personal/personal.module';
+import { HorarioModule } from './horario/horario.module';
+import { MotivoModule } from './motivo/motivo.module';
+import { FestivoModule } from './festivo/festivo.module';
 import { InstitucionesModule } from './instituciones/instituciones.module';
 import { SedesModule } from './sedes/sedes.module';
 import { AulasModule } from './aulas/aulas.module';
@@ -15,6 +20,10 @@ import { AsistenciaTutorModule } from './asistencia-tutor/asistencia-tutor.modul
 import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { EstudianteAulaModule } from './estudiante-aula/estudiante-aula.module';
 import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia-estudiantes.module';
+import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
+import { ComponentesModule } from './componentes/componentes.module';
+import { NotasModule } from './notas/notas.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -24,11 +33,11 @@ import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia
     DatabaseModule,
 
     SeedModule,
-    
+
     AuthModule,
-    
+
     RolesModule,
-    
+
     InstitucionesModule,
 
     SedesModule,
@@ -44,10 +53,28 @@ import { AsistenciaEstudiantesModule } from './asistencia-estudiantes/asistencia
     EstudiantesModule,
 
     EstudianteAulaModule,
-    
+
     AsistenciaEstudiantesModule,
 
+    UsuariosModule,
+
+    PersonalModule,
+
+    HorarioModule,
+
+    MotivoModule,
+
+    FestivoModule,
+
     AsistenciaTutorModule,
+
+    TipoDocumentoModule,
+
+    ComponentesModule,
+
+    NotasModule,
+
+    ReportesModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

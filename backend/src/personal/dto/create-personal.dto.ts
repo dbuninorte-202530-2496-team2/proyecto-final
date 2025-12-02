@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsEmail, IsNumber } from 'class-validator';
 
 export class CreatePersonalDto {
-    @ApiProperty({ example: 'P001' })
+    @ApiProperty({ example: '1234567890' })
     @IsString()
     @IsNotEmpty()
     codigo: string;
@@ -18,9 +18,8 @@ export class CreatePersonalDto {
     apellido?: string;
 
     @ApiProperty({ example: 'juan@example.com', required: false })
-    @IsOptional()
     @IsEmail()
-    correo?: string;
+    correo: string;
 
     @ApiProperty({ example: '3001234567', required: false })
     @IsOptional()

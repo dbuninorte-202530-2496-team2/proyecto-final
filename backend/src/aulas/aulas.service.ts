@@ -17,12 +17,10 @@ export class AulasService {
   constructor(
     @Inject(PG_CONNECTION) private readonly pool: Pool,
     private readonly sedesService: SedesService,
-  ) {}
+  ) { }
 
-  private getTipoPrograma(grado: number): TipoPrograma {
-    // Grados 4 y 5 -> INSIDECLASSROOM
-    // Grados 9 y 10 -> OUTSIDECLASSROOM
-    return grado === 4 || grado === 5 ? 'INSIDECLASSROOM' : 'OUTSIDECLASSROOM';
+  private mapTipoPrograma(value: number): TipoPrograma {
+    return value === 1 ? 'INSIDECLASSROOM' : 'OUTSIDECLASSROOM';
   }
 
   async create(createAulaDto: CreateAulaDto) {
@@ -35,16 +33,15 @@ export class AulasService {
       const result = await this.pool.query(
         `INSERT INTO aula (grado, grupo, id_sede) 
          VALUES ($1, $2, $3) 
-         RETURNING id, grado, grupo, id_sede`,
+         RETURNING id, grado, grupo, id_sede, tipo_programa`,
         [grado, grupo, id_sede],
       );
 
       const aula = result.rows[0];
-      
-      // Agregar tipo_programa calculado
+
       return {
         ...aula,
-        tipo_programa: this.getTipoPrograma(aula.grado),
+        tipo_programa: this.mapTipoPrograma(aula.tipo_programa),
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -55,7 +52,7 @@ export class AulasService {
   async findAll() {
     try {
       const result = await this.pool.query(
-        `SELECT a.id, a.grado, a.grupo, a.id_sede,
+        `SELECT a.id, a.grado, a.grupo, a.id_sede, a.tipo_programa,
                 s.nombre as sede_nombre,
                 i.nombre as institucion_nombre
          FROM aula a
@@ -64,10 +61,9 @@ export class AulasService {
          ORDER BY i.nombre, s.nombre, a.grado, a.grupo ASC`,
       );
 
-      // Agregar tipo_programa a cada aula
       return result.rows.map(aula => ({
         ...aula,
-        tipo_programa: this.getTipoPrograma(aula.grado),
+        tipo_programa: this.mapTipoPrograma(aula.tipo_programa),
       }));
     } catch (error) {
       this.handleDBExceptions(error);
@@ -77,7 +73,7 @@ export class AulasService {
   async findOne(id: number) {
     try {
       const result = await this.pool.query(
-        `SELECT a.id, a.grado, a.grupo, a.id_sede,
+        `SELECT a.id, a.grado, a.grupo, a.id_sede, a.tipo_programa,
                 s.nombre as sede_nombre,
                 i.nombre as institucion_nombre
          FROM aula a
@@ -94,7 +90,7 @@ export class AulasService {
       const aula = result.rows[0];
       return {
         ...aula,
-        tipo_programa: this.getTipoPrograma(aula.grado),
+        tipo_programa: this.mapTipoPrograma(aula.tipo_programa),
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -108,7 +104,7 @@ export class AulasService {
       await this.sedesService.findOne(id_sede);
 
       const result = await this.pool.query(
-        `SELECT id, grado, grupo, id_sede
+        `SELECT id, grado, grupo, id_sede, tipo_programa
          FROM aula
          WHERE id_sede = $1
          ORDER BY grado, grupo ASC`,
@@ -117,7 +113,7 @@ export class AulasService {
 
       return result.rows.map(aula => ({
         ...aula,
-        tipo_programa: this.getTipoPrograma(aula.grado),
+        tipo_programa: this.mapTipoPrograma(aula.tipo_programa),
       }));
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -189,14 +185,14 @@ export class AulasService {
              grupo = COALESCE($2, grupo),
              id_sede = COALESCE($3, id_sede)
          WHERE id = $4 
-         RETURNING id, grado, grupo, id_sede`,
+         RETURNING id, grado, grupo, id_sede, tipo_programa`,
         [grado, grupo, id_sede, id],
       );
 
       const aula = result.rows[0];
       return {
         ...aula,
-        tipo_programa: this.getTipoPrograma(aula.grado),
+        tipo_programa: this.mapTipoPrograma(aula.tipo_programa),
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

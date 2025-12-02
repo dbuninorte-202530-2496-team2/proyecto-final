@@ -1,5 +1,7 @@
 # Global English
 
+![MER](MER.png)
+
 Sistema de gestión para institución de idiomas.
 
 ## Requisitos
