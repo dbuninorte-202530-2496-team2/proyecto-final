@@ -26,12 +26,6 @@ import {
   type CreateTipoDocumentoDto
 } from '../../../services/api';
 
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-  items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
-
-//CATÁLOGOS 
-
 export const ConfiguracionCatalogosBasicos: React.FC = () => {
   // estados
   const [festivos, setFestivos] = useState<Festivo[]>([]);
@@ -820,148 +814,6 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
         </div>
       </div>
 
-      {/* Períodos */}
-      <section className="animate-fadeIn">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-indigo-100">
-            <Layers className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">
-              Períodos Académicos
-            </h3>
-            <p className="text-sm text-gray-500">
-              Ciclos escolares que agrupan semanas y evaluaciones
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200 mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por año o número..."
-              value={searchPeriodos}
-              onChange={(e) => setSearchPeriodos(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-4">
-          <div className="max-h-72 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b-2 border-indigo-200 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Período
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Año
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Número
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Semana Inicio
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Semana Fin
-                  </th>
-                  <th className="px-4 py-3 w-12" />
-                </tr>
-              </thead>
-              <tbody>
-                {periodosFiltrados.length > 0 ? (
-                  periodosFiltrados.map((p, idx) => {
-                    const semanas = periodosSemanas.get(p.id);
-                    return (
-                      <tr
-                        key={p.id}
-                        className={`border-b transition-colors hover:bg-indigo-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
-                      >
-                        <td className="px-4 py-3 text-gray-900 font-medium">
-                          {getPeriodoNombre(p)}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">{p.anho}</td>
-                        <td className="px-4 py-3 text-gray-700">{p.numero}</td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
-                          {semanas?.primera ? semanas.primera.split('T')[0] : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
-                          {semanas?.ultima ? semanas.ultima.split('T')[0] : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePeriodo(p.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-all hover:scale-110 duration-150"
-                            title="Eliminar período"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-sm text-gray-400 italic"
-                    >
-                      {searchPeriodos
-                        ? 'Sin períodos coincidentes'
-                        : 'Sin períodos definidos'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <form
-          onSubmit={handleAddPeriodo}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-2"
-        >
-          <input
-            type="number"
-            placeholder="Año"
-            value={newPeriodo.anho}
-            onChange={(e) =>
-              setNewPeriodo((prev) => ({
-                ...prev,
-                anho: Number(e.target.value),
-              }))
-            }
-            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-          />
-          <input
-            type="number"
-            placeholder="Número (1, 2, etc.)"
-            min="1"
-            value={newPeriodo.numero}
-            onChange={(e) =>
-              setNewPeriodo((prev) => ({
-                ...prev,
-                numero: Number(e.target.value),
-              }))
-            }
-            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-          />
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105 duration-150 shadow-sm whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            Agregar
-          </button>
-        </form>
-      </section>
-
       {/* Componentes de evaluación */}
       <section className="animate-fadeIn">
         <div className="flex items-center gap-3 mb-4">
@@ -1128,6 +980,147 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
           <button
             type="submit"
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105 duration-150 shadow-sm whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar
+          </button>
+        </form>
+      </section>
+      {/* Períodos */}
+      <section className="animate-fadeIn">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-indigo-100">
+            <Layers className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">
+              Períodos Académicos
+            </h3>
+            <p className="text-sm text-gray-500">
+              Ciclos escolares que agrupan semanas y evaluaciones
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200 mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por año o número..."
+              value={searchPeriodos}
+              onChange={(e) => setSearchPeriodos(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-4">
+          <div className="max-h-72 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b-2 border-indigo-200 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Período
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Año
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Número
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Semana Inicio
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Semana Fin
+                  </th>
+                  <th className="px-4 py-3 w-12" />
+                </tr>
+              </thead>
+              <tbody>
+                {periodosFiltrados.length > 0 ? (
+                  periodosFiltrados.map((p, idx) => {
+                    const semanas = periodosSemanas.get(p.id);
+                    return (
+                      <tr
+                        key={p.id}
+                        className={`border-b transition-colors hover:bg-indigo-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
+                      >
+                        <td className="px-4 py-3 text-gray-900 font-medium">
+                          {getPeriodoNombre(p)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{p.anho}</td>
+                        <td className="px-4 py-3 text-gray-700">{p.numero}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {semanas?.primera ? semanas.primera.split('T')[0] : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {semanas?.ultima ? semanas.ultima.split('T')[0] : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePeriodo(p.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-all hover:scale-110 duration-150"
+                            title="Eliminar período"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-6 text-center text-sm text-gray-400 italic"
+                    >
+                      {searchPeriodos
+                        ? 'Sin períodos coincidentes'
+                        : 'Sin períodos definidos'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleAddPeriodo}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+        >
+          <input
+            type="number"
+            placeholder="Año"
+            value={newPeriodo.anho}
+            onChange={(e) =>
+              setNewPeriodo((prev) => ({
+                ...prev,
+                anho: Number(e.target.value),
+              }))
+            }
+            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+          />
+          <input
+            type="number"
+            placeholder="Número (1, 2, etc.)"
+            min="1"
+            value={newPeriodo.numero}
+            onChange={(e) =>
+              setNewPeriodo((prev) => ({
+                ...prev,
+                numero: Number(e.target.value),
+              }))
+            }
+            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105 duration-150 shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             Agregar
