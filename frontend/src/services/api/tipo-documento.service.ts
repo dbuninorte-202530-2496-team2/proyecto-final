@@ -36,20 +36,6 @@ class TipoDocumentoService {
         const response = await apiClient.get<TipoDocumentoBackend>(`${this.BASE_PATH}/${id}`);
         return this.transformResponse(response.data);
     }
-
-    async create(data: Omit<TipoDocumento, 'id'>): Promise<TipoDocumento> {
-        // Backend expects { codigo, descripcion }
-        const payload = {
-            codigo: data.sigla,
-            descripcion: data.nombre,
-        };
-        const response = await apiClient.post<TipoDocumentoBackend>(this.BASE_PATH, payload);
-        return this.transformResponse(response.data);
-    }
-
-    async delete(id: number): Promise<void> {
-        await apiClient.delete(`${this.BASE_PATH}/${id}`);
-    }
 }
 
 export const tipoDocumentoService = new TipoDocumentoService();

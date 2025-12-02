@@ -15,10 +15,6 @@ export { rolesService } from './roles.service';
 export type { Rol } from './roles.service';
 export { tipoDocumentoService } from './tipo-documento.service';
 export type { TipoDocumento } from './tipo-documento.service';
-export { festivosService } from './festivos.service';
-export { motivosService } from './motivos.service';
-export { periodosService } from './periodos.service';
-export { componentesService } from './componentes.service';
 
 // Export API client for direct use if needed
 export { default as apiClient } from './api-client';
