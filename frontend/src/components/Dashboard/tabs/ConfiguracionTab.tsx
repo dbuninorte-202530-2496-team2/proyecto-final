@@ -38,7 +38,7 @@ const ConfiguracionTab: React.FC = () => {
       <CardContent>
         <div className="space-y-12">
 
-          <ConfiguracionCatalogosBasicos />
+          <ConfiguracionAcademicaEvaluacion />
 
           <div className="border-t-2 border-gray-200" />
 
@@ -46,7 +46,8 @@ const ConfiguracionTab: React.FC = () => {
 
           <div className="border-t-2 border-gray-200" />
 
-          <ConfiguracionAcademicaEvaluacion />
+          <ConfiguracionCatalogosBasicos />
+
         </div>
       </CardContent>
     </Card>

@@ -1,84 +1,92 @@
-import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Trash2, Save, Wand2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Wand2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Semana } from '../../../types/semana';
 import type { Periodo } from '../../../types/periodo';
-
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-    items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
-
-// Helper para sumar días a una fecha
-const addDays = (dateStr: string, days: number): string => {
-    const date = new Date(dateStr);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-};
+import { periodosService } from '../../../services/api/periodos.service';
 
 export const ConfiguracionSemanas: React.FC = () => {
-    // Mock de periodos (debería venir de props o contexto en app real)
-    const [periodos] = useState<Periodo[]>([
-        { id: 1, nombre: '2025-1', anio: 2025, fec_ini: '2025-01-20', fec_fin: '2025-06-15' },
-        { id: 2, nombre: '2025-2', anio: 2025, fec_ini: '2025-07-15', fec_fin: '2025-12-01' },
-    ]);
-
-    const [semanas, setSemanas] = useState<Semana[]>([
-        { id: 1, numero: 1, fecha_inicio: '2025-01-20', fecha_fin: '2025-01-26', id_periodo: 1, periodoNombre: '2025-1' },
-        { id: 2, numero: 2, fecha_inicio: '2025-01-27', fecha_fin: '2025-02-02', id_periodo: 1, periodoNombre: '2025-1' },
-    ]);
-
-    const [selectedPeriodoId, setSelectedPeriodoId] = useState<number>(periodos[0]?.id || 0);
+    const [periodos, setPeriodos] = useState<Periodo[]>([]);
+    const [semanas, setSemanas] = useState<Semana[]>([]);
+    const [selectedPeriodoId, setSelectedPeriodoId] = useState<number>(0);
     const [generationConfig, setGenerationConfig] = useState({
-        startDate: periodos[0]?.fec_ini || '',
+        startDate: new Date().toISOString().split('T')[0],
         weeksCount: 16,
     });
 
-    // Filtrar semanas por periodo seleccionado
-    const semanasFiltradas = useMemo(() =>
-        semanas.filter(s => s.id_periodo === selectedPeriodoId).sort((a, b) => a.numero - b.numero),
-        [semanas, selectedPeriodoId]);
+    useEffect(() => {
+        loadPeriodos();
 
-    const handleGenerarSemanas = () => {
+        // Listen for changes from other components
+        const handlePeriodosChange = () => {
+            loadPeriodos();
+        };
+
+        window.addEventListener('periodos-updated', handlePeriodosChange);
+
+        return () => {
+            window.removeEventListener('periodos-updated', handlePeriodosChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (selectedPeriodoId) {
+            loadSemanas(selectedPeriodoId);
+        } else {
+            setSemanas([]);
+        }
+    }, [selectedPeriodoId]);
+
+    const loadPeriodos = async () => {
+        try {
+            const data = await periodosService.getAll();
+            setPeriodos(data);
+            if (data.length > 0 && !selectedPeriodoId) {
+                setSelectedPeriodoId(data[0].id);
+            }
+        } catch (error) {
+            console.error('Error loading periodos', error);
+        }
+    };
+
+    const loadSemanas = async (id: number) => {
+        try {
+            const data = await periodosService.getSemanasByPeriodo(id);
+            // Sort by id or date just in case
+            setSemanas(data.sort((a, b) => new Date(a.fec_ini).getTime() - new Date(b.fec_ini).getTime()));
+        } catch (error) {
+            console.error('Error loading semanas', error);
+            setSemanas([]);
+        }
+    };
+
+    const handleGenerarSemanas = async () => {
         if (!selectedPeriodoId || !generationConfig.startDate) return;
 
-        const periodo = periodos.find(p => p.id === selectedPeriodoId);
-        if (!periodo) return;
+        // Prevent generation if weeks already exist (per enunciado.txt: calendar created only once)
+        if (semanas.length > 0) {
+            toast.error('Este periodo ya tiene semanas generadas. No se puede generar nuevamente.');
+            return;
+        }
 
-        if (window.confirm(`¿Estás seguro de generar ${generationConfig.weeksCount} semanas? Esto reemplazará las semanas existentes para este periodo.`)) {
-            // Eliminar semanas existentes del periodo
-            const otrasSemanas = semanas.filter(s => s.id_periodo !== selectedPeriodoId);
-
-            const nuevasSemanas: Semana[] = [];
-            let currentDate = generationConfig.startDate;
-            let currentId = generateId(semanas); // Empezar IDs desde el máximo actual
-
-            for (let i = 1; i <= generationConfig.weeksCount; i++) {
-                const endDate = addDays(currentDate, 6); // Semana de 7 días (Lunes a Domingo)
-
-                nuevasSemanas.push({
-                    id: currentId + i,
-                    numero: i,
-                    fecha_inicio: currentDate,
-                    fecha_fin: endDate,
-                    id_periodo: selectedPeriodoId,
-                    periodoNombre: periodo.nombre
+        if (window.confirm(`¿Estás seguro de generar ${generationConfig.weeksCount} semanas?`)) {
+            try {
+                await periodosService.generarSemanas(selectedPeriodoId, {
+                    fec_ini: generationConfig.startDate,
+                    cantidad_semanas: generationConfig.weeksCount
                 });
 
-                currentDate = addDays(endDate, 1); // Siguiente lunes
+                toast.success('Semanas generadas exitosamente');
+                loadSemanas(selectedPeriodoId);
+                // Notify other components
+                window.dispatchEvent(new CustomEvent('semanas-updated'));
+            } catch (error) {
+                console.error('Error generating semanas', error);
             }
-
-            setSemanas([...otrasSemanas, ...nuevasSemanas]);
         }
     };
 
-    const handleDeleteSemana = (id: number) => {
-        if (window.confirm('¿Eliminar esta semana?')) {
-            setSemanas(prev => prev.filter(s => s.id !== id));
-        }
-    };
-
-    const handleUpdateSemana = (id: number, field: keyof Semana, value: any) => {
-        setSemanas(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
-    };
+    const getPeriodoNombre = (p: Periodo) => `${p.anho}-${p.numero}`;
 
     return (
         <section className="space-y-8 animate-fadeIn">
@@ -107,16 +115,11 @@ export const ConfiguracionSemanas: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
                         <select
                             value={selectedPeriodoId}
-                            onChange={(e) => {
-                                const pid = Number(e.target.value);
-                                setSelectedPeriodoId(pid);
-                                const p = periodos.find(per => per.id === pid);
-                                if (p) setGenerationConfig(prev => ({ ...prev, startDate: p.fec_ini }));
-                            }}
+                            onChange={(e) => setSelectedPeriodoId(Number(e.target.value))}
                             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
                         >
                             {periodos.map(p => (
-                                <option key={p.id} value={p.id}>{p.nombre}</option>
+                                <option key={p.id} value={p.id}>{getPeriodoNombre(p)}</option>
                             ))}
                         </select>
                     </div>
@@ -143,9 +146,14 @@ export const ConfiguracionSemanas: React.FC = () => {
                         />
                     </div>
 
+
                     <button
                         onClick={handleGenerarSemanas}
-                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2"
+                        disabled={semanas.length > 0}
+                        className={`px-4 py-2.5 rounded-lg font-semibold transition-colors shadow-md flex items-center justify-center gap-2 ${semanas.length > 0
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
                     >
                         <Wand2 className="w-4 h-4" />
                         Generar Semanas
@@ -155,8 +163,10 @@ export const ConfiguracionSemanas: React.FC = () => {
                 <div className="mt-3 flex items-start gap-2 text-xs text-indigo-700 bg-indigo-100 p-2 rounded-lg">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <p>
-                        Al generar, se crearán semanas consecutivas de lunes a domingo a partir de la fecha de inicio.
-                        Las semanas existentes para el periodo seleccionado serán reemplazadas.
+                        {semanas.length > 0
+                            ? 'Este periodo ya tiene semanas generadas. El calendario solo se puede crear una vez por periodo.'
+                            : 'Al generar, se crearán semanas consecutivas de lunes a domingo a partir de la fecha de inicio. El calendario solo se puede crear una vez por periodo.'
+                        }
                     </p>
                 </div>
             </div>
@@ -170,46 +180,26 @@ export const ConfiguracionSemanas: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"># Semana</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha Inicio</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha Fin</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {semanasFiltradas.length > 0 ? (
-                                semanasFiltradas.map((semana) => (
+                            {semanas.length > 0 ? (
+                                semanas.map((semana, index) => (
                                     <tr key={semana.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900">
-                                            Semana {semana.numero}
+                                            Semana {index + 1}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <input
-                                                type="date"
-                                                value={semana.fecha_inicio}
-                                                onChange={(e) => handleUpdateSemana(semana.id, 'fecha_inicio', e.target.value)}
-                                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-indigo-500"
-                                            />
+                                        <td className="px-6 py-4 text-gray-700">
+                                            {semana.fec_ini.split('T')[0]}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <input
-                                                type="date"
-                                                value={semana.fecha_fin}
-                                                onChange={(e) => handleUpdateSemana(semana.id, 'fecha_fin', e.target.value)}
-                                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleDeleteSemana(semana.id)}
-                                                className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
-                                                title="Eliminar semana"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                        <td className="px-6 py-4 text-gray-700">
+                                            {semana.fec_fin.split('T')[0]}
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500 italic">
+                                    <td colSpan={3} className="px-6 py-12 text-center text-gray-500 italic">
                                         No hay semanas configuradas para este periodo. Usa el generador arriba.
                                     </td>
                                 </tr>

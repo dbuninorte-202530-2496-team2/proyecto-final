@@ -1,5 +1,5 @@
 export interface Periodo {
-  id: number;
-  anho: number;
-  numero: number;
+    id: number;
+    anho: number;
+    numero: number;
 }

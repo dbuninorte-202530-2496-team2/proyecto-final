@@ -16,40 +16,30 @@ import {
   Search,
 } from 'lucide-react';
 
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-  items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
-
-//CATÁLOGOS 
+import {
+  festivosService,
+  motivosService,
+  tipoDocumentoService,
+  periodosService,
+  componentesService,
+  type CreateFestivoDto,
+  type CreateTipoDocumentoDto
+} from '../../../services/api';
 
 export const ConfiguracionCatalogosBasicos: React.FC = () => {
   // estados
-  const [festivos, setFestivos] = useState<Festivo[]>([
-    { id: 1, fecha: '2025-01-01', descripcion: 'Año Nuevo' },
-    { id: 2, fecha: '2025-03-24', descripcion: 'Festivo de marzo' },
-  ]);
+  const [festivos, setFestivos] = useState<Festivo[]>([]);
+  const [motivos, setMotivos] = useState<Motivo[]>([]);
+  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [motivos, setMotivos] = useState<Motivo[]>([
-    { id: 1, descripcion: 'Enfermedad' },
-    { id: 2, descripcion: 'Actividad institucional' },
-    { id: 3, descripcion: 'Transporte / movilidad' },
-  ]);
-
-  const [tiposDoc, setTiposDoc] = useState<TipoDocumento[]>([
-    { id: 1, nombre: 'Cédula de ciudadanía', sigla: 'CC' },
-    { id: 2, nombre: 'Tarjeta de identidad', sigla: 'TI' },
-    { id: 3, nombre: 'Registro civil', sigla: 'RC' },
-  ]);
-
-  const [newFestivo, setNewFestivo] = useState<Festivo>({
-    id: 0,
+  const [newFestivo, setNewFestivo] = useState<CreateFestivoDto>({
     fecha: '',
     descripcion: '',
   });
 
   const [newMotivo, setNewMotivo] = useState('');
-  const [newTipoDoc, setNewTipoDoc] = useState<TipoDocumento>({
-    id: 0,
+  const [newTipoDoc, setNewTipoDoc] = useState<CreateTipoDocumentoDto>({
     nombre: '',
     sigla: '',
   });
@@ -57,6 +47,30 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
   const [searchFestivos, setSearchFestivos] = useState('');
   const [searchMotivos, setSearchMotivos] = useState('');
   const [searchTiposDoc, setSearchTiposDoc] = useState('');
+
+  // Fetch initial data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [festivosData, motivosData, tiposDocData] = await Promise.all([
+        festivosService.getAll(),
+        motivosService.getAll(),
+        tipoDocumentoService.getAll(),
+      ]);
+      setFestivos(festivosData);
+      setMotivos(motivosData);
+      setTiposDoc(tiposDocData);
+    } catch (error) {
+      console.error('Error loading catalogs:', error);
+      alert('Error al cargar los catálogos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   // filtros
   const festivosFiltrados = useMemo(
@@ -97,65 +111,87 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
   );
 
   // handlers festivos
-  const handleAddFestivo = (e: React.FormEvent) => {
+  const handleAddFestivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFestivo.fecha || !newFestivo.descripcion.trim()) return;
 
-    setFestivos((prev) => [
-      ...prev,
-      {
+    try {
+      await festivosService.create({
         ...newFestivo,
-        id: generateId(prev),
         descripcion: newFestivo.descripcion.trim(),
-      },
-    ]);
-    setNewFestivo({ id: 0, fecha: '', descripcion: '' });
+      });
+      setNewFestivo({ fecha: '', descripcion: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating festivo:', error);
+      alert('Error al crear festivo');
+    }
   };
 
-  const handleDeleteFestivo = (id: number) => {
-    setFestivos((prev) => prev.filter((f) => f.id !== id));
+  const handleDeleteFestivo = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este festivo?')) return;
+    try {
+      await festivosService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting festivo:', error);
+      alert('Error al eliminar festivo');
+    }
   };
 
   // handlers motivos
-  const handleAddMotivo = (e: React.FormEvent) => {
+  const handleAddMotivo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMotivo.trim()) return;
 
-    setMotivos((prev) => [
-      ...prev,
-      { id: generateId(prev), descripcion: newMotivo.trim() },
-    ]);
-    setNewMotivo('');
+    try {
+      await motivosService.create({ descripcion: newMotivo.trim() });
+      setNewMotivo('');
+      fetchData();
+    } catch (error) {
+      console.error('Error creating motivo:', error);
+      alert('Error al crear motivo');
+    }
   };
 
-  const handleDeleteMotivo = (id: number) => {
-    setMotivos((prev) => prev.filter((m) => m.id !== id));
+  const handleDeleteMotivo = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este motivo?')) return;
+    try {
+      await motivosService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting motivo:', error);
+      alert('Error al eliminar motivo');
+    }
   };
 
   // handlers tipos documento
-  const handleAddTipoDoc = (e: React.FormEvent) => {
+  const handleAddTipoDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTipoDoc.sigla.trim() || !newTipoDoc.nombre.trim()) return;
 
-    setTiposDoc((prev) => [
-      ...prev,
-      {
-        ...newTipoDoc,
-        id: generateId(prev),
+    try {
+      await tipoDocumentoService.create({
         sigla: newTipoDoc.sigla.trim().toUpperCase(),
         nombre: newTipoDoc.nombre.trim(),
-      },
-    ]);
-
-    setNewTipoDoc({
-      id: 0,
-      nombre: '',
-      sigla: '',
-    });
+      });
+      setNewTipoDoc({ nombre: '', sigla: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating tipo documento:', error);
+      alert('Error al crear tipo de documento');
+    }
   };
 
-  const handleDeleteTipoDoc = (id: number) => {
-    setTiposDoc((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTipoDoc = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este tipo de documento?')) return;
+    try {
+      await tipoDocumentoService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting tipo documento:', error);
+      alert('Error al eliminar tipo de documento');
+    }
   };
 
   // render
@@ -171,7 +207,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Festivos
             </div>
             <div className="text-3xl font-bold text-emerald-900 mt-2">
-              {stats.totalFestivos}
+              {loading ? '...' : stats.totalFestivos}
             </div>
             <p className="text-xs text-emerald-700 mt-1">
               Días sin clases en el calendario
@@ -183,7 +219,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Motivos de ausencia
             </div>
             <div className="text-3xl font-bold text-orange-900 mt-2">
-              {stats.totalMotivos}
+              {loading ? '...' : stats.totalMotivos}
             </div>
             <p className="text-xs text-orange-700 mt-1">
               Razones para justificar inasistencias
@@ -195,7 +231,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               Tipos de documento
             </div>
             <div className="text-3xl font-bold text-sky-900 mt-2">
-              {stats.totalTiposDoc}
+              {loading ? '...' : stats.totalTiposDoc}
             </div>
             <p className="text-xs text-sky-700 mt-1">
               Catálogo usado al registrar estudiantes
@@ -204,7 +240,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="space-y-12">
         {/* FESTIVOS */}
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -251,9 +287,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                     festivosFiltrados.map((f, idx) => (
                       <tr
                         key={f.id}
-                        className={`border-b transition-colors hover:bg-emerald-50 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                        className={`border-b transition-colors hover:bg-emerald-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
                       >
                         <td className="px-4 py-3 text-gray-700 font-medium">
                           {f.fecha}
@@ -298,7 +333,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               type="date"
               value={newFestivo.fecha}
               onChange={(e) =>
-                setNewFestivo((prev) => ({ ...prev, fecha: e.target.value }))
+                setNewFestivo((prev: CreateFestivoDto) => ({ ...prev, fecha: e.target.value }))
               }
               className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-all hover:border-emerald-300 text-sm"
             />
@@ -307,7 +342,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
               placeholder="Descripción"
               value={newFestivo.descripcion}
               onChange={(e) =>
-                setNewFestivo((prev) => ({
+                setNewFestivo((prev: CreateFestivoDto) => ({
                   ...prev,
                   descripcion: e.target.value,
                 }))
@@ -325,7 +360,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
         </div>
 
         {/* MOTIVOS + TIPOS DOC */}
-        <div className="space-y-8">
+        <div className="space-y-12">
           {/* Motivos - Subsección */}
           <div className="animate-fadeIn">
             <div className="flex items-center gap-3 mb-4">
@@ -371,9 +406,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                       motivosFiltrados.map((m, idx) => (
                         <tr
                           key={m.id}
-                          className={`border-b transition-colors hover:bg-orange-50 ${
-                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
+                          className={`border-b transition-colors hover:bg-orange-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            }`}
                         >
                           <td className="px-4 py-3 text-gray-700">
                             {m.descripcion}
@@ -476,9 +510,8 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                       tiposDocFiltrados.map((t, idx) => (
                         <tr
                           key={t.id}
-                          className={`border-b transition-colors hover:bg-sky-50 ${
-                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
+                          className={`border-b transition-colors hover:bg-sky-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            }`}
                         >
                           <td className="px-4 py-3 text-sky-800 font-semibold">
                             {t.sigla}
@@ -524,7 +557,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                 placeholder="Sigla (ej: CC)"
                 value={newTipoDoc.sigla}
                 onChange={(e) =>
-                  setNewTipoDoc((prev) => ({
+                  setNewTipoDoc((prev: CreateTipoDocumentoDto) => ({
                     ...prev,
                     sigla: e.target.value,
                   }))
@@ -536,7 +569,7 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
                 placeholder="Nombre completo"
                 value={newTipoDoc.nombre}
                 onChange={(e) =>
-                  setNewTipoDoc((prev) => ({
+                  setNewTipoDoc((prev: CreateTipoDocumentoDto) => ({
                     ...prev,
                     nombre: e.target.value,
                   }))
@@ -561,74 +594,96 @@ export const ConfiguracionCatalogosBasicos: React.FC = () => {
 //PERIODOS ACADÉMICOS Y COMPONENTES DE NOTA
 
 export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
-  const [periodos, setPeriodos] = useState<Periodo[]>([
-    {
-      id: 1,
-      nombre: '2025-1',
-      anio: 2025,
-      fec_ini: '2025-01-20',
-      fec_fin: '2025-06-15',
-    },
-    {
-      id: 2,
-      nombre: '2025-2',
-      anio: 2025,
-      fec_ini: '2025-07-15',
-      fec_fin: '2025-12-01',
-    },
-  ]);
+  const [periodos, setPeriodos] = useState<Periodo[]>([]);
+  const [componentes, setComponentes] = useState<Componente[]>([]);
+  const [periodosSemanas, setPeriodosSemanas] = useState<Map<number, { primera?: string; ultima?: string }>>(new Map());
+  const [loading, setLoading] = useState(true);
 
-  const [componentes, setComponentes] = useState<Componente[]>([
-    {
-      id: 1,
-      nombre: 'Inside – Participación',
-      tipo_programa: 'INSIDECLASSROOM',
-      porcentaje: 30,
-      id_periodo: 1,
-    },
-    {
-      id: 2,
-      nombre: 'Inside – Evaluación final',
-      tipo_programa: 'INSIDECLASSROOM',
-      porcentaje: 70,
-      id_periodo: 1,
-    },
-    {
-      id: 3,
-      nombre: 'Outside – Proyecto',
-      tipo_programa: 'OUTSIDECLASSROOM',
-      porcentaje: 40,
-      id_periodo: 1,
-    },
-  ]);
-
-  const [newPeriodo, setNewPeriodo] = useState<Periodo>({
-    id: 0,
-    nombre: '',
-    anio: new Date().getFullYear(),
-    fec_ini: '',
-    fec_fin: '',
+  const [newPeriodo, setNewPeriodo] = useState({
+    anho: new Date().getFullYear(),
+    numero: 1,
   });
 
-  const [errorFechasPeriodos, setErrorFechasPeriodos] = useState(false);
-
-  const [newComponente, setNewComponente] = useState<Componente>({
-    id: 0,
+  const [newComponente, setNewComponente] = useState({
     nombre: '',
-    tipo_programa: 'INSIDECLASSROOM',
+    tipo_programa: 1, // 1 = INSIDECLASSROOM
     porcentaje: 0,
-    id_periodo: 1,
+    id_periodo: 0,
   });
 
   const [searchPeriodos, setSearchPeriodos] = useState('');
   const [searchComponentes, setSearchComponentes] = useState('');
 
+  // Fetch data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const periodosData = await periodosService.getAll();
+      setPeriodos(periodosData);
+
+      // Fetch semanas for each periodo to get first and last week
+      const semanasMap = new Map<number, { primera?: string; ultima?: string }>();
+      for (const periodo of periodosData) {
+        try {
+          const semanas = await periodosService.getSemanasByPeriodo(periodo.id);
+          if (semanas.length > 0) {
+            semanasMap.set(periodo.id, {
+              primera: semanas[0].fec_ini,
+              ultima: semanas[semanas.length - 1].fec_fin,
+            });
+          }
+        } catch (error) {
+          console.error(`Error loading semanas for periodo ${periodo.id}:`, error);
+        }
+      }
+      setPeriodosSemanas(semanasMap);
+
+      // Fetch all componentes for all periodos
+      if (periodosData.length > 0) {
+        const allComponentes: Componente[] = [];
+        for (const periodo of periodosData) {
+          const comps = await componentesService.getByPeriodo(periodo.id);
+          allComponentes.push(...comps);
+        }
+        setComponentes(allComponentes);
+
+        // Set default periodo for new componente
+        if (periodosData.length > 0 && newComponente.id_periodo === 0) {
+          setNewComponente(prev => ({ ...prev, id_periodo: periodosData[0].id }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+
+    // Listen for changes from other components
+    const handleDataChange = () => {
+      fetchData();
+    };
+
+    window.addEventListener('periodos-updated', handleDataChange);
+    window.addEventListener('semanas-updated', handleDataChange);
+
+    return () => {
+      window.removeEventListener('periodos-updated', handleDataChange);
+      window.removeEventListener('semanas-updated', handleDataChange);
+    };
+  }, []);
+
   const periodosFiltrados = useMemo(
     () =>
       periodos.filter(
-        (p) =>
-          p.nombre.toLowerCase().includes(searchPeriodos.toLowerCase()) ||
-          p.anio.toString().includes(searchPeriodos),
+        (p) => {
+          const nombre = `${p.anho}-${p.numero}`;
+          return nombre.toLowerCase().includes(searchPeriodos.toLowerCase()) ||
+            p.anho.toString().includes(searchPeriodos);
+        }
       ),
     [periodos, searchPeriodos],
   );
@@ -636,12 +691,12 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
   const componentesFiltrados = useMemo(
     () =>
       componentes.filter(
-        (c) =>
-          c.nombre.toLowerCase().includes(searchComponentes.toLowerCase()) ||
-          periodos
-            .find((p) => p.id === c.id_periodo)
-            ?.nombre.toLowerCase()
-            .includes(searchComponentes.toLowerCase()),
+        (c) => {
+          const periodo = periodos.find((p) => p.id === c.id_periodo);
+          const periodoNombre = periodo ? `${periodo.anho}-${periodo.numero}` : '';
+          return c.nombre.toLowerCase().includes(searchComponentes.toLowerCase()) ||
+            periodoNombre.toLowerCase().includes(searchComponentes.toLowerCase());
+        }
       ),
     [componentes, searchComponentes, periodos],
   );
@@ -654,78 +709,76 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
     [periodos.length, componentes.length],
   );
 
-  // validación de fechas para periodos
-  const validarFechasPeriodo = (): boolean => {
-    if (!newPeriodo.fec_ini || !newPeriodo.fec_fin) {
-      setErrorFechasPeriodos(false);
-      return true;
-    }
-    const error = newPeriodo.fec_ini > newPeriodo.fec_fin;
-    setErrorFechasPeriodos(error);
-    return !error;
-  };
-
   // handlers periodos
-  const handleAddPeriodo = (e: React.FormEvent) => {
+  const handleAddPeriodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !newPeriodo.nombre.trim() ||
-      !newPeriodo.fec_ini ||
-      !newPeriodo.fec_fin
-    )
-      return;
+    if (!newPeriodo.anho || !newPeriodo.numero) return;
 
-    if (!validarFechasPeriodo()) return;
-
-    setPeriodos((prev) => [
-      ...prev,
-      {
-        ...newPeriodo,
-        id: generateId(prev),
-        nombre: newPeriodo.nombre.trim(),
-      },
-    ]);
-
-    setNewPeriodo({
-      id: 0,
-      nombre: '',
-      anio: new Date().getFullYear(),
-      fec_ini: '',
-      fec_fin: '',
-    });
-    setErrorFechasPeriodos(false);
+    try {
+      await periodosService.create({
+        anho: newPeriodo.anho,
+        numero: newPeriodo.numero,
+      });
+      setNewPeriodo({
+        anho: new Date().getFullYear(),
+        numero: 1,
+      });
+      fetchData();
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('periodos-updated'));
+    } catch (error) {
+      console.error('Error creating periodo:', error);
+    }
   };
 
-  const handleDeletePeriodo = (id: number) => {
-    setPeriodos((prev) => prev.filter((p) => p.id !== id));
+  const handleDeletePeriodo = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este período?')) return;
+    try {
+      await periodosService.delete(id);
+      fetchData();
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('periodos-updated'));
+    } catch (error) {
+      console.error('Error deleting periodo:', error);
+    }
   };
 
   // handlers componentes
-  const handleAddComponente = (e: React.FormEvent) => {
+  const handleAddComponente = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComponente.nombre.trim()) return;
 
-    setComponentes((prev) => [
-      ...prev,
-      {
-        ...newComponente,
-        id: generateId(prev),
+    try {
+      await componentesService.create({
         nombre: newComponente.nombre.trim(),
-      },
-    ]);
-
-    setNewComponente({
-      id: 0,
-      nombre: '',
-      tipo_programa: 'INSIDECLASSROOM',
-      porcentaje: 0,
-      id_periodo: periodos[0]?.id ?? 1,
-    });
+        tipo_programa: newComponente.tipo_programa,
+        porcentaje: newComponente.porcentaje,
+        id_periodo: newComponente.id_periodo,
+      });
+      setNewComponente({
+        nombre: '',
+        tipo_programa: 1,
+        porcentaje: 0,
+        id_periodo: periodos[0]?.id ?? 0,
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error creating componente:', error);
+    }
   };
 
-  const handleDeleteComponente = (id: number) => {
-    setComponentes((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteComponente = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este componente?')) return;
+    try {
+      await componentesService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting componente:', error);
+    }
   };
+
+  const getPeriodoNombre = (p: Periodo) => `${p.anho}-${p.numero}`;
+  const getTipoProgramaLabel = (tipo: number) => tipo === 1 ? 'Inside' : 'Outside';
 
   // render
   return (
@@ -740,7 +793,7 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
               Períodos académicos
             </div>
             <div className="text-3xl font-bold text-indigo-900 mt-2">
-              {stats.totalPeriodos}
+              {loading ? '...' : stats.totalPeriodos}
             </div>
             <p className="text-xs text-indigo-700 mt-1">
               Rangos de fechas para el programa
@@ -752,7 +805,7 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
               Componentes de nota
             </div>
             <div className="text-3xl font-bold text-purple-900 mt-2">
-              {stats.totalComponentes}
+              {loading ? '...' : stats.totalComponentes}
             </div>
             <p className="text-xs text-purple-700 mt-1">
               Criterios de evaluación Inside / Outside
@@ -760,180 +813,6 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Períodos */}
-      <section className="animate-fadeIn">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-indigo-100">
-            <Layers className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">
-              Períodos Académicos
-            </h3>
-            <p className="text-sm text-gray-500">
-              Ciclos escolares que agrupan semanas y evaluaciones
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200 mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o año..."
-              value={searchPeriodos}
-              onChange={(e) => setSearchPeriodos(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-4">
-          <div className="max-h-72 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b-2 border-indigo-200 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Año
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Desde
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
-                    Hasta
-                  </th>
-                  <th className="px-4 py-3 w-12" />
-                </tr>
-              </thead>
-              <tbody>
-                {periodosFiltrados.length > 0 ? (
-                  periodosFiltrados.map((p, idx) => (
-                    <tr
-                      key={p.id}
-                      className={`border-b transition-colors hover:bg-indigo-50 ${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-gray-900 font-medium">
-                        {p.nombre}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{p.anio}</td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">
-                        {p.fec_ini}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">
-                        {p.fec_fin}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePeriodo(p.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-all hover:scale-110 duration-150"
-                          title="Eliminar período"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-6 text-center text-sm text-gray-400 italic"
-                    >
-                      {searchPeriodos
-                        ? 'Sin períodos coincidentes'
-                        : 'Sin períodos definidos'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <form
-          onSubmit={handleAddPeriodo}
-          className="space-y-3"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={newPeriodo.nombre}
-              onChange={(e) =>
-                setNewPeriodo((prev) => ({ ...prev, nombre: e.target.value }))
-              }
-              className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-            />
-            <input
-              type="number"
-              placeholder="Año"
-              value={newPeriodo.anio}
-              onChange={(e) =>
-                setNewPeriodo((prev) => ({
-                  ...prev,
-                  anio: Number(e.target.value),
-                }))
-              }
-              className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
-            />
-            <input
-              type="date"
-              value={newPeriodo.fec_ini}
-              onChange={(e) => {
-                setNewPeriodo((prev) => ({ ...prev, fec_ini: e.target.value }));
-                setErrorFechasPeriodos(false);
-              }}
-              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${
-                errorFechasPeriodos
-                  ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
-                  : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
-              }`}
-            />
-            <input
-              type="date"
-              value={newPeriodo.fec_fin}
-              onChange={(e) => {
-                setNewPeriodo((prev) => ({ ...prev, fec_fin: e.target.value }));
-                setErrorFechasPeriodos(false);
-              }}
-              className={`px-3 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all hover:border-indigo-300 text-sm ${
-                errorFechasPeriodos
-                  ? 'border-red-500 focus:ring-red-600 focus:border-red-600'
-                  : 'border-gray-300 focus:ring-indigo-600 focus:border-indigo-600'
-              }`}
-            />
-            <button
-              type="submit"
-              disabled={errorFechasPeriodos}
-              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition-all whitespace-nowrap ${
-                errorFechasPeriodos
-                  ? 'bg-gray-400 cursor-not-allowed opacity-50'
-                  : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-md transform hover:scale-105 duration-150 shadow-sm'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              Agregar
-            </button>
-          </div>
-
-          {errorFechasPeriodos && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border-l-4 border-red-500 rounded-lg animate-fadeIn">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-sm font-semibold text-red-700">
-                La fecha de inicio no puede ser posterior a la fecha de fin
-              </p>
-            </div>
-          )}
-        </form>
-      </section>
 
       {/* Componentes de evaluación */}
       <section className="animate-fadeIn">
@@ -991,25 +870,22 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
                     return (
                       <tr
                         key={c.id}
-                        className={`border-b transition-colors hover:bg-purple-50 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                        className={`border-b transition-colors hover:bg-purple-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
                       >
                         <td className="px-4 py-3 text-gray-900 font-medium">
                           {c.nombre}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                            {c.tipo_programa === 'INSIDECLASSROOM'
-                              ? 'Inside'
-                              : 'Outside'}
+                            {getTipoProgramaLabel(c.tipo_programa)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center font-bold text-purple-600">
                           {c.porcentaje}%
                         </td>
                         <td className="px-4 py-3 text-gray-700 text-sm">
-                          {periodo?.nombre ?? '-'}
+                          {periodo ? getPeriodoNombre(periodo) : '-'}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
@@ -1060,16 +936,13 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
             onChange={(e) =>
               setNewComponente((prev) => ({
                 ...prev,
-                tipo_programa:
-                  e.target.value === 'INSIDECLASSROOM'
-                    ? 'INSIDECLASSROOM'
-                    : 'OUTSIDECLASSROOM',
+                tipo_programa: Number(e.target.value),
               }))
             }
             className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition-all hover:border-purple-300 text-sm bg-white"
           >
-            <option value="INSIDECLASSROOM">Inside</option>
-            <option value="OUTSIDECLASSROOM">Outside</option>
+            <option value={1}>Inside</option>
+            <option value={2}>Outside</option>
           </select>
 
           <input
@@ -1099,7 +972,7 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
           >
             {periodos.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nombre}
+                {getPeriodoNombre(p)}
               </option>
             ))}
           </select>
@@ -1107,6 +980,147 @@ export const ConfiguracionAcademicaEvaluacion: React.FC = () => {
           <button
             type="submit"
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105 duration-150 shadow-sm whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar
+          </button>
+        </form>
+      </section>
+      {/* Períodos */}
+      <section className="animate-fadeIn">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-indigo-100">
+            <Layers className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">
+              Períodos Académicos
+            </h3>
+            <p className="text-sm text-gray-500">
+              Ciclos escolares que agrupan semanas y evaluaciones
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200 mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por año o número..."
+              value={searchPeriodos}
+              onChange={(e) => setSearchPeriodos(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-4">
+          <div className="max-h-72 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b-2 border-indigo-200 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Período
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Año
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Número
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Semana Inicio
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Semana Fin
+                  </th>
+                  <th className="px-4 py-3 w-12" />
+                </tr>
+              </thead>
+              <tbody>
+                {periodosFiltrados.length > 0 ? (
+                  periodosFiltrados.map((p, idx) => {
+                    const semanas = periodosSemanas.get(p.id);
+                    return (
+                      <tr
+                        key={p.id}
+                        className={`border-b transition-colors hover:bg-indigo-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          }`}
+                      >
+                        <td className="px-4 py-3 text-gray-900 font-medium">
+                          {getPeriodoNombre(p)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{p.anho}</td>
+                        <td className="px-4 py-3 text-gray-700">{p.numero}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {semanas?.primera ? semanas.primera.split('T')[0] : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {semanas?.ultima ? semanas.ultima.split('T')[0] : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePeriodo(p.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-all hover:scale-110 duration-150"
+                            title="Eliminar período"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-6 text-center text-sm text-gray-400 italic"
+                    >
+                      {searchPeriodos
+                        ? 'Sin períodos coincidentes'
+                        : 'Sin períodos definidos'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleAddPeriodo}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+        >
+          <input
+            type="number"
+            placeholder="Año"
+            value={newPeriodo.anho}
+            onChange={(e) =>
+              setNewPeriodo((prev) => ({
+                ...prev,
+                anho: Number(e.target.value),
+              }))
+            }
+            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+          />
+          <input
+            type="number"
+            placeholder="Número (1, 2, etc.)"
+            min="1"
+            value={newPeriodo.numero}
+            onChange={(e) =>
+              setNewPeriodo((prev) => ({
+                ...prev,
+                numero: Number(e.target.value),
+              }))
+            }
+            className="px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all hover:border-indigo-300 text-sm"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-semibold transition-all hover:shadow-md transform hover:scale-105 duration-150 shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             Agregar

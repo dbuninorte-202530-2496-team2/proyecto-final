@@ -1,47 +1,72 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, Search, Key, Link, ShieldCheck } from 'lucide-react';
 import type { Usuario, UsuarioFormData } from '../../../types/usuario';
 import type { Rol } from '../../../types/rol';
 import type { Personal } from '../../../types/personal';
-
-// Helper para IDs
-const generateId = (items: { id: number }[]): number =>
-    items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
+import { usuariosService } from '../../../services/api/usuarios.service';
+import { personalService } from '../../../services/api/personal.service';
+import { rolesService } from '../../../services/api/roles.service';
 
 export const GestionUsuarios: React.FC = () => {
-    // Mock Data
-    const [usuarios, setUsuarios] = useState<Usuario[]>([
-        { id: 1, username: 'admin', email: 'admin@globalenglish.edu.co', id_personal: 1, personalNombre: 'Mei Ching', id_rol: 1, rolNombre: 'ADMINISTRADOR', estado: 'ACTIVO', ultimo_acceso: '2025-11-29 10:00' },
-        { id: 2, username: 'lrodriguez', email: 'laura.rod@globalenglish.edu.co', id_personal: 2, personalNombre: 'Laura Rodríguez', id_rol: 3, rolNombre: 'TUTOR', estado: 'ACTIVO', ultimo_acceso: '2025-11-28 15:30' },
-    ]);
-
-    const [roles] = useState<Rol[]>([
-        { id: 1, nombre: 'ADMINISTRADOR' },
-        { id: 2, nombre: 'ADMINISTRATIVO' },
-        { id: 3, nombre: 'TUTOR' },
-    ]);
-
-    const [personal] = useState<Personal[]>([
-        { id: 1, nombres: 'Mei', apellidos: 'Ching', correo: 'mei@test.com', telefono: '', tipo_doc: 1, num_doc: '123', id_rol: 1 },
-        { id: 2, nombres: 'Laura', apellidos: 'Rodríguez', correo: 'laura@test.com', telefono: '', tipo_doc: 1, num_doc: '456', id_rol: 3 },
-        { id: 3, nombres: 'Carlos', apellidos: 'Martínez', correo: 'carlos@test.com', telefono: '', tipo_doc: 1, num_doc: '789', id_rol: 3 },
-    ]);
-
+    const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+    const [roles, setRoles] = useState<Rol[]>([]);
+    const [personal, setPersonal] = useState<Personal[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingUsername, setEditingUsername] = useState<string | null>(null);
     const [formData, setFormData] = useState<UsuarioFormData>({
-        username: '',
-        email: '',
-        id_personal: null,
-        id_rol: 3,
-        estado: 'ACTIVO',
-        password: '',
+        usuario: '',
+        contrasena: '',
+        id_personal: 0,
     });
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Load data on mount
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            const [usuariosData, personalData, rolesData] = await Promise.all([
+                usuariosService.getAll(),
+                personalService.getAll(),
+                rolesService.getAll(),
+            ]);
+
+            setPersonal(personalData);
+            setRoles(rolesData);
+
+            // Create display model: merge usuarios with personal data
+            const usuariosDisplay: Usuario[] = usuariosData.map((u: any) => {
+                const personalAsignado = personalData.find(p => p.usuario === u.usuario);
+                const rol = personalAsignado ? rolesData.find(r => r.id === personalAsignado.id_rol) : undefined;
+
+                return {
+                    usuario: u.usuario,
+                    email: personalAsignado?.correo || 'Sin correo',
+                    id_personal: personalAsignado?.id || 0,
+                    personalNombre: personalAsignado
+                        ? `${personalAsignado.nombre} ${personalAsignado.apellido || ''}`.trim()
+                        : 'Sin asignar',
+                    id_rol: personalAsignado?.id_rol || 0,
+                    rolNombre: rol?.nombre || 'Sin rol',
+                } as Usuario;
+            });
+
+            setUsuarios(usuariosDisplay);
+        } catch (error) {
+            console.error('Error loading data:', error);
+            alert('Error al cargar los datos');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filteredUsuarios = useMemo(() =>
         usuarios.filter(u =>
-            u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (u.personalNombre || '').toLowerCase().includes(searchTerm.toLowerCase())
         ),
@@ -50,91 +75,149 @@ export const GestionUsuarios: React.FC = () => {
     // Personal disponible (no asignado a otro usuario, excepto el actual editando)
     const personalDisponible = useMemo(() =>
         personal.filter(p =>
-            !usuarios.some(u => u.id_personal === p.id && u.id !== editingId)
+            !p.usuario || (editingUsername && p.usuario === editingUsername)
         ),
-        [personal, usuarios, editingId]);
+        [personal, editingUsername]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const personalSeleccionado = personal.find(p => p.id === formData.id_personal);
-        const rolSeleccionado = roles.find(r => r.id === formData.id_rol);
+        try {
+            if (editingUsername) {
+                // Update flow - solo contraseña
+                const usuarioActual = usuarios.find(u => u.usuario === editingUsername);
 
-        const nuevoUsuario: Usuario = {
-            id: editingId || generateId(usuarios),
-            username: formData.username,
-            email: formData.email,
-            id_personal: formData.id_personal,
-            personalNombre: personalSeleccionado ? `${personalSeleccionado.nombres} ${personalSeleccionado.apellidos}` : undefined,
-            id_rol: formData.id_rol,
-            rolNombre: rolSeleccionado?.nombre,
-            estado: formData.estado,
-            ultimo_acceso: editingId ? usuarios.find(u => u.id === editingId)?.ultimo_acceso : undefined
-        };
+                // Only send password update if provided
+                if (formData.contrasena) {
+                    await usuariosService.update(editingUsername, {
+                        contrasena: formData.contrasena
+                    });
+                }
 
-        if (editingId) {
-            setUsuarios(prev => prev.map(u => u.id === editingId ? nuevoUsuario : u));
-        } else {
-            setUsuarios(prev => [...prev, nuevoUsuario]);
-            // Simulación de envío de correo
-            if (formData.email) {
-                alert(`Se ha enviado la contraseña al correo: ${formData.email}`);
+                // Asignar personal si no tenía y se seleccionó uno
+                if (usuarioActual?.id_personal === 0 && formData.id_personal > 0) {
+                    await personalService.update(formData.id_personal, {
+                        usuario: editingUsername,
+                    });
+                }
+
+                alert('Usuario actualizado correctamente');
+            } else {
+                // Create flow - crear usuario sin personal obligatorio y sin contraseña obligatoria
+                const createData: any = {
+                    usuario: formData.usuario,
+                };
+
+                // Solo agregar contraseña si se proporcionó
+                if (formData.contrasena) {
+                    createData.contrasena = formData.contrasena;
+                }
+
+                // 1. Create usuario record
+                await usuariosService.create(createData);
+
+                // 2. Link to personal si se seleccionó
+                if (formData.id_personal && formData.id_personal > 0) {
+                    await personalService.update(formData.id_personal, {
+                        usuario: formData.usuario,
+                    });
+                }
+
+                alert('Usuario creado correctamente');
             }
-        }
 
-        handleCloseForm();
+            // Reload data
+            await loadData();
+            handleCloseForm();
+        } catch (error: any) {
+            console.error('Error saving user:', error);
+            alert(error.response?.data?.message || 'Error al guardar el usuario');
+        }
     };
 
     const handleEdit = (usuario: Usuario) => {
-        setEditingId(usuario.id);
+        setEditingUsername(usuario.usuario);
         setFormData({
-            username: usuario.username,
-            email: usuario.email,
+            usuario: usuario.usuario,
+            contrasena: '', // Don't pre-fill password
             id_personal: usuario.id_personal,
-            id_rol: usuario.id_rol,
-            estado: usuario.estado,
         });
         setShowForm(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (window.confirm('¿Eliminar este usuario?')) {
-            setUsuarios(prev => prev.filter(u => u.id !== id));
+    const handleDelete = async (usuario: Usuario) => {
+        if (!window.confirm(`¿Eliminar el usuario '${usuario.usuario}'?`)) {
+            return;
+        }
+
+        try {
+            // 1. Unlink from personal if assigned
+            if (usuario.id_personal && usuario.id_personal > 0) {
+                await personalService.update(usuario.id_personal, { usuario: undefined });
+            }
+
+            // 2. Delete usuario record
+            await usuariosService.delete(usuario.usuario);
+
+            // Reload data
+            await loadData();
+            alert('Usuario eliminado correctamente');
+        } catch (error: any) {
+            console.error('Error deleting user:', error);
+            alert(error.response?.data?.message || 'Error al eliminar el usuario');
         }
     };
 
-    const handleResetPassword = (email: string) => {
-        if (window.confirm(`¿Enviar nueva contraseña al correo ${email}?`)) {
-            alert(`Se ha enviado un enlace de restablecimiento a ${email}`);
+    const handleResetPassword = async (usuario: Usuario) => {
+        const email = usuario.id_personal > 0 ? usuario.email : 'sin correo asignado';
+        if (!window.confirm(`¿Enviar nueva contraseña al correo ${email}?`)) {
+            return;
+        }
+
+        if (usuario.id_personal === 0) {
+            alert('Este usuario no tiene personal asignado. No se puede enviar correo.');
+            return;
+        }
+
+        try {
+            await usuariosService.sendPassword(usuario.usuario);
+            alert(`Se ha enviado un enlace de restablecimiento a ${usuario.email}`);
+        } catch (error: any) {
+            console.error('Error sending password:', error);
+            alert(error.response?.data?.message || 'Error al enviar la contraseña');
         }
     };
 
     const handleCloseForm = () => {
         setShowForm(false);
-        setEditingId(null);
+        setEditingUsername(null);
         setFormData({
-            username: '',
-            email: '',
-            id_personal: null,
-            id_rol: 3,
-            estado: 'ACTIVO',
-            password: '',
+            usuario: '',
+            contrasena: '',
+            id_personal: 0,
         });
     };
 
-    // Auto-fill email and role when selecting personal
+    // Auto-fill username when selecting personal
     const handlePersonalChange = (personalId: number) => {
         const p = personal.find(per => per.id === personalId);
         if (p) {
             setFormData(prev => ({
                 ...prev,
                 id_personal: personalId,
-                email: p.correo,
-                id_rol: p.id_rol, // Heredar rol del personal por defecto
-                username: p.correo.split('@')[0] // Sugerir username
+                usuario: prev.usuario || p.correo.split('@')[0], // Suggest username if empty
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                id_personal: 0,
             }));
         }
     };
+
+    if (loading) {
+        return <div className="flex justify-center items-center p-8">Cargando...</div>;
+    }
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -148,7 +231,7 @@ export const GestionUsuarios: React.FC = () => {
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
-                    Nuevo Usuario
+                    Crear Usuario
                 </button>
             </div>
 
@@ -173,42 +256,44 @@ export const GestionUsuarios: React.FC = () => {
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Usuario</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Personal Asignado</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Rol</th>
-                                <th className="px-4 py-3 text-center font-semibold text-gray-600">Estado</th>
                                 <th className="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {filteredUsuarios.map(usuario => (
-                                <tr key={usuario.id} className="hover:bg-gray-50">
+                                <tr key={usuario.usuario} className="hover:bg-gray-50">
                                     <td className="px-4 py-3">
-                                        <div className="font-medium text-indigo-900">{usuario.username}</div>
+                                        <div className="font-medium text-indigo-900">{usuario.usuario}</div>
                                         <div className="text-xs text-gray-500">{usuario.email}</div>
                                     </td>
                                     <td className="px-4 py-3">
-                                        {usuario.personalNombre ? (
+                                        {usuario.id_personal > 0 ? (
                                             <span className="flex items-center gap-1 text-gray-700">
                                                 <Link className="w-3 h-3 text-green-500" />
                                                 {usuario.personalNombre}
                                             </span>
                                         ) : (
-                                            <span className="text-gray-400 italic">Sin asignar</span>
+                                            <span className="flex items-center gap-1 text-gray-400 italic">
+                                                <Link className="w-3 h-3" />
+                                                Sin asignar
+                                            </span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
-                                            <ShieldCheck className="w-3 h-3" />
-                                            {usuario.rolNombre}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${usuario.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                            }`}>
-                                            {usuario.estado}
-                                        </span>
+                                        {usuario.rolNombre && usuario.rolNombre !== 'Sin rol' ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                                                <ShieldCheck className="w-3 h-3" />
+                                                {usuario.rolNombre}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 italic">
+                                                Sin rol
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 text-right flex justify-end gap-2">
                                         <button
-                                            onClick={() => handleResetPassword(usuario.email)}
+                                            onClick={() => handleResetPassword(usuario)}
                                             className="p-1 text-gray-500 hover:bg-gray-100 rounded"
                                             title="Enviar contraseña"
                                         >
@@ -217,12 +302,19 @@ export const GestionUsuarios: React.FC = () => {
                                         <button onClick={() => handleEdit(usuario)} className="p-1 text-amber-600 hover:bg-amber-50 rounded">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => handleDelete(usuario.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                        <button onClick={() => handleDelete(usuario)} className="p-1 text-red-600 hover:bg-red-50 rounded">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </td>
                                 </tr>
                             ))}
+                            {filteredUsuarios.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                                        No se encontraron usuarios
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -233,104 +325,92 @@ export const GestionUsuarios: React.FC = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
                         <h3 className="text-lg font-bold text-gray-900 mb-6 border-b pb-2">
-                            {editingId ? 'Editar Usuario' : 'Nuevo Usuario'}
+                            {editingUsername ? 'Editar Usuario' : 'Crear Usuario'}
                         </h3>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Columna Izquierda: Datos de Cuenta */}
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wide">Datos de Cuenta</h4>
-
+                            <div className="space-y-4">
+                                {/* Mostrar selector de personal al crear O al editar si no tiene personal */}
+                                {(!editingUsername || (editingUsername && usuarios.find(u => u.usuario === editingUsername)?.id_personal === 0)) && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.username}
-                                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="email"
-                                            required
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
-                                    </div>
-
-                                    {!editingId && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Inicial</label>
-                                            <input
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                placeholder="Generar automáticamente si se deja vacío"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Se enviará al correo electrónico.</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Columna Derecha: Asignación y Permisos */}
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wide">Asignación y Permisos</h4>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Vincular con Personal</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            {editingUsername ? 'Asignar a Personal' : 'Asignar a Personal (Opcional)'}
+                                        </label>
                                         <select
                                             value={formData.id_personal || ''}
                                             onChange={(e) => handlePersonalChange(Number(e.target.value))}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         >
-                                            <option value="">-- Seleccionar Personal --</option>
-                                            {personalDisponible.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.nombres} {p.apellidos} ({p.num_doc})
-                                                </option>
-                                            ))}
-                                            {editingId && formData.id_personal && (
-                                                <option value={formData.id_personal}>
-                                                    {/* Mantener el actual si se está editando */}
-                                                    {usuarios.find(u => u.id === editingId)?.personalNombre} (Actual)
-                                                </option>
-                                            )}
+                                            <option value="">-- Sin Asignar --</option>
+                                            {personalDisponible.map(p => {
+                                                const rol = roles.find(r => r.id === p.id_rol);
+                                                return (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.nombre} {p.apellido} - {rol?.nombre} ({p.correo})
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
-                                        <p className="text-xs text-gray-500 mt-1">Autocompleta datos basados en el registro de personal.</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {editingUsername
+                                                ? 'Este usuario no tiene personal asignado. Puedes asignarlo ahora.'
+                                                : 'Puedes crear el usuario sin asignarlo a ningún personal'}
+                                        </p>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Rol del Sistema <span className="text-red-500">*</span></label>
-                                        <select
-                                            required
-                                            value={formData.id_rol}
-                                            onChange={(e) => setFormData({ ...formData, id_rol: Number(e.target.value) })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        >
-                                            {roles.map(rol => (
-                                                <option key={rol.id} value={rol.id}>{rol.nombre}</option>
-                                            ))}
-                                        </select>
+                                {/* Mostrar info si ya tiene personal asignado */}
+                                {editingUsername && usuarios.find(u => u.usuario === editingUsername)?.id_personal! > 0 && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <p className="text-sm text-blue-800 flex items-center gap-2">
+                                            <Link className="w-4 h-4" />
+                                            <span>
+                                                <strong>Personal asignado:</strong> {usuarios.find(u => u.usuario === editingUsername)?.personalNombre}
+                                            </span>
+                                        </p>
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            Este usuario ya tiene personal asignado. No se puede cambiar desde aquí.
+                                        </p>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                                        <select
-                                            value={formData.estado}
-                                            onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'ACTIVO' | 'INACTIVO' })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        >
-                                            <option value="ACTIVO">ACTIVO</option>
-                                            <option value="INACTIVO">INACTIVO</option>
-                                        </select>
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Nombre de Usuario <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.usuario}
+                                        onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="Ej: jperez"
+                                        disabled={!!editingUsername}
+                                    />
+                                    {editingUsername && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            El nombre de usuario no se puede modificar
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Contraseña {editingUsername && '(Opcional)'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={formData.contrasena}
+                                        onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder={editingUsername ? "Dejar vacío para no cambiar" : "Contraseña opcional"}
+                                        minLength={formData.contrasena ? 6 : 0}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {editingUsername
+                                            ? "Dejar vacío para mantener la contraseña actual"
+                                            : "La contraseña es opcional. Si no se proporciona, se puede establecer después"}
+                                    </p>
                                 </div>
                             </div>
 
@@ -346,7 +426,7 @@ export const GestionUsuarios: React.FC = () => {
                                     type="submit"
                                     className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 shadow-md"
                                 >
-                                    Guardar Usuario
+                                    {editingUsername ? 'Actualizar Usuario' : 'Crear Usuario'}
                                 </button>
                             </div>
                         </form>
